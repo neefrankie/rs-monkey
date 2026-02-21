@@ -1,0 +1,35 @@
+use std::io::{self, Write};
+use crate::lexer::Lexer;
+use crate::token::{TokenType};
+
+const PROMPT: &str = ">> ";
+
+pub fn start() {
+    let mut input = String::new();
+
+    loop {
+        print!("{}", PROMPT);
+        io::stdout().flush().expect("Faield to flush stdout");
+
+        input.clear();
+
+        if io::stdin().read_line(&mut input).is_err() {
+            println!();
+            break;
+        }
+
+        // 移除换行符（read_line 会保留 \n 或 \r\n）
+        let line = input.trim_end();
+
+        let mut lexer = Lexer::new(line.to_string());
+
+        loop {
+            
+            let tok = lexer.next_token();
+            println!("{:?}", tok);
+            if tok.token_type == TokenType::Eof {
+                break;
+            }
+        }
+    }
+}
