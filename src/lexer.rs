@@ -27,6 +27,8 @@ impl Lexer {
         }
         self.position = self.read_position;
         self.read_position += 1;
+        
+        println!("LEXER: pos={}, read_pos={}, ch='{}'", self.position, self.read_position, self.ch as char)
     }
 
     fn peek_char(&self) -> u8 {
