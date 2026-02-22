@@ -1,6 +1,7 @@
 use std::io::{self, Write};
 use crate::lexer::Lexer;
 use crate::token::{TokenType};
+use crate::parser::Parser;
 
 const PROMPT: &str = ">> ";
 
@@ -21,13 +22,14 @@ pub fn start() {
         // 移除换行符（read_line 会保留 \n 或 \r\n）
         let line = input.trim_end();
 
-        let mut lexer = Lexer::new(line.to_string());
+        let lexer = Lexer::new(line.to_string());
 
+        let mut parser = Parser::new(lexer);
         loop {
             
-            let tok = lexer.next_token();
-            println!("{:?}", tok);
-            if tok.token_type == TokenType::Eof {
+            parser.next_token();
+            println!("Step a token");
+            if parser.current_token.token_type == TokenType::Eof {
                 break;
             }
         }
