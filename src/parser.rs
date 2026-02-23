@@ -1,4 +1,4 @@
-use crate::ast;
+use crate::ast::{self};
 use crate::lexer;
 use crate::token::{self, TokenType};
 use std::vec::Vec;
@@ -56,6 +56,7 @@ impl Parser {
     fn parse_statement(&mut self) -> Option<Box<dyn ast::Statement>> { 
         match self.current_token.token_type {
             TokenType::Let => self.parse_let_statement(),
+            TokenType::Return => self.parse_return_statement(),
             _ => None
         }
     }
@@ -91,6 +92,24 @@ impl Parser {
         }));
     }
 
+    fn parse_return_statement(&mut self) -> Option<Box<dyn ast::Statement>> {
+        // For return 5;, current_token points to `return`.
+        let return_token = self.current_token.clone();
+
+        self.next_token();
+        println!("parse_return: move to next token {}", self.current_token.literal);
+
+        while !self.current_token_is(TokenType::Semicolon) {
+            self.next_token();
+            println!("parse_return: skip next token {}", self.current_token.literal)
+        }
+
+        return Some(Box::new(ast::ReturnStatement {
+            token: return_token,
+            return_value: None,
+        }))
+    }
+
     fn current_token_is(&self, token_type: TokenType) -> bool {
         self.current_token.token_type == token_type
     }
@@ -118,10 +137,15 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ast, lexer};
+    use crate::ast::Node;
+    use crate::lexer;
 
     fn as_let_statement(stmt: &dyn ast::Statement) -> Option<&ast::LetStatement> {
         stmt.as_any().downcast_ref::<ast::LetStatement>()
+    }
+
+    fn as_return_statement(stmt: &dyn ast::Statement) -> Option<&ast::ReturnStatement> {
+        stmt.as_any().downcast_ref::<ast::ReturnStatement>()
     }
 
     fn test_let_statement(stmt: &dyn ast::Statement, name: &str) -> bool {
@@ -196,6 +220,43 @@ let foobar = 838383;
                 "Test failed for statement {} with identifier {}",
                 i,
                 expected_identifier
+            )
+        }
+    }
+
+    #[test]
+    fn test_return_statements() {
+        let input = "return 5;
+return 10;
+return 993 322;
+";
+        let lex = lexer::Lexer::new(input.to_string());
+        let mut parser = Parser::new(lex);
+        let program = parser.parse_program()
+            .expect("parse_program failed");
+        
+        check_parser_errors(&parser);
+        
+        assert_eq!(program.statements.len(), 3,
+            "program.statements does not contain 3 statements. got={}",
+            program.statements.len());
+
+        for box_stmt in program.statements {
+            let stmt = &*box_stmt;
+
+            let ret_stmt = match as_return_statement(stmt) {
+                Some(ret_stmt) => ret_stmt,
+                None => {
+                    println!("Statement is not a ReturnStatement");
+                    continue;
+                }
+            };
+
+            assert_eq!(
+                ret_stmt.token_literal(),
+                "return",
+                "return statement does not 'return', got {}",
+                ret_stmt.token_literal()
             )
         }
     }
