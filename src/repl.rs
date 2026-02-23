@@ -1,6 +1,5 @@
 use std::io::{self, Write};
 use crate::lexer::Lexer;
-use crate::token::{TokenType};
 use crate::parser::Parser;
 
 const PROMPT: &str = ">> ";
@@ -25,13 +24,15 @@ pub fn start() {
         let lexer = Lexer::new(line.to_string());
 
         let mut parser = Parser::new(lexer);
-        loop {
-            
-            parser.next_token();
-            println!("Step a token");
-            if parser.current_token.token_type == TokenType::Eof {
-                break;
-            }
+        let program = parser.parse_program()
+            .expect("parse_program failed");
+
+        println!("\n");
+        for statement in program.statements {
+            let stmt = &*statement;
+
+            println!("{}", stmt.token_literal());
         }
+        
     }
 }
