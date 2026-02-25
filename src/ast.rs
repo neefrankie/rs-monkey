@@ -1,18 +1,17 @@
-use std::any::Any;
-
-use crate::token::Token;
+use std::{any::Any, fmt};
 
 pub trait Node {
     fn token_literal(&self) -> String;
 }
 
-pub trait Statement: Node {
+pub trait Statement: Node + fmt::Display + fmt::Debug {
     fn statement_node(&self);
     fn as_any(&self) -> &dyn Any;
 }
 
-pub trait Expression: Node {
+pub trait Expression: Node + fmt::Display + fmt::Debug {
     fn expression_node(&self);
+    fn as_any(&self) -> &dyn Any;
 }
 
 pub struct Program {
@@ -28,56 +27,31 @@ impl Node for Program {
     }
 }
 
-pub struct LetStatement {
-    pub token: Token,
-    pub name: Identifier,
-    pub value: Option<Box<dyn Expression>>,
-}
-
-impl Statement for LetStatement {
-    fn statement_node(&self) {}
-
-    fn as_any(&self) -> &dyn Any {
-        self
+impl fmt::Display for Program {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for statement in &self.statements {
+            write!(f, "{}", statement)?;
+        }
+        Ok(())
     }
 }
 
-impl Node for LetStatement {
-    fn token_literal(&self) -> String {
-        self.token.literal.clone()
-    }
-}
+mod statements;
+mod expressions;
 
-pub struct Identifier {
-    pub token: Token,
-    pub value: String,
-}
+pub use statements::{
+    LetStatement, 
+    ReturnStatement, 
+    ExpressionStatement
+};
+pub use expressions::{
+    MissingExpression,
+    Identifier,
+    IntegerLiteral, 
+    PrefixExpression, 
+    InfixExpression, 
+};
 
-impl Expression for Identifier {
-    fn expression_node(&self) {}
-}
 
-impl Node for Identifier {
-    fn token_literal(&self) -> String {
-        self.token.literal.clone()
-    }
-}
-
-pub struct ReturnStatement {
-    pub token: Token,
-    pub return_value: Option<Box<dyn Expression>>,
-}
-
-impl Statement for ReturnStatement {
-    fn statement_node(&self) {}
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-}
-
-impl Node for ReturnStatement {
-    fn token_literal(&self) -> String {
-        self.token.literal.clone()
-    }
-}
+#[cfg(test)]
+mod tests;
