@@ -27,12 +27,7 @@ pub fn start() {
         let program = parser.parse_program()
             .expect("parse_program failed");
 
-        println!("\n");
-        for statement in program.statements {
-            let stmt = &*statement;
-
-            println!("{}", stmt.token_literal());
-        }
+        println!("\n{}\n", program);
         
     }
 }
