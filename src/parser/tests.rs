@@ -164,23 +164,32 @@ fn test_identifier_expression() {
         .as_expression()
         .expect("program.statements[0] is not an ExpressionStatement");
 
-    let ident = expr.as_identifier()
-        .expect("expression is not an Identifier");
+    test_identifier(expr, "foobar".to_string());
+}
 
+fn test_identifier(exp: &Expression, value: String) -> bool {
+    let Some(ident) = exp.as_identifier() else {
+        eprintln!("exp is not an Expression::Identifier. got {}", exp);
+        return false;
+    };
+        
     assert_eq!(
         ident.value,
         "foobar",
-        "Identifier has wrong value. got={}",
+        "Identifier.value not {}. got={}",
+        value,
         ident.value
     );
 
     assert_eq!(
         ident.token_literal(),
-        "foobar",
-        "Identifier has wrong token_literal. got={}",
+        value,
+        "Identifier.token_literal not {}. got={}",
+        value,
         ident.token_literal()
-
     );
+
+    return true;
 }
 
 #[test]
@@ -290,6 +299,21 @@ fn test_integer_literal(il: &Expression, expected_value: i64) -> bool {
     return true;
 }
 
+fn test_literal_expression(exp: &Expression, expected: &Expression) -> bool {
+    match expected {
+        Expression::IntegerLiteral { value, .. } => {
+            test_integer_literal(exp, *value)
+        }
+        Expression::Ident(identifier) => {
+            test_identifier(exp, identifier.value.clone())
+        }
+        _ => {
+            eprintln!("type of exp not handled. got {}", exp);
+            false
+        }
+    }
+}
+
 #[test]
 fn test_parsing_infix_expressions() {
     let tests = vec![
@@ -345,6 +369,46 @@ fn test_parsing_infix_expressions() {
             right_value
         );
     }
+}
+
+fn test_infix_expression(
+    exp: &Expression, 
+    left: &Expression, 
+    operator: String, 
+    right: &Expression
+) -> bool {
+    let Some((
+        infix_left, 
+        infix_operator, 
+        infix_right
+    )) = exp.as_infix() else {
+        eprintln!("expression is not an Expression::Infix. got {}", exp);
+        return false;
+    };
+
+    if !test_literal_expression(
+        infix_left, 
+        left
+    ) {
+        return false;
+    }
+    
+    assert_eq!(
+        infix_operator,
+        operator,
+        "exp.operator is not {}. got={}",
+        operator,
+        infix_operator
+    );
+
+    if !test_literal_expression(
+        infix_right,
+        right
+    ) {
+        return false;
+    };
+
+    return true;
 }
 
 #[test]
