@@ -1,19 +1,67 @@
 use crate::token::TokenType;
 
-pub const LOWEST: i32 = 0;
-pub const EQUAL: i32 = 1; // ==
-pub const LESSGRATER: i32 = 2; // > or <
-pub const SUM: i32 = 3; // +
-pub const PRODUCT: i32 = 4;
-pub const PREFIX: i32 = 5; // -X or !X
-pub const CALL: i32 = 6; // myFunction(x)
 
-pub fn token_precedence(token_type: TokenType) -> i32 {
-    match token_type {
-        TokenType::Eq | TokenType::NotEq => EQUAL,
-        TokenType::LessThan | TokenType::GreaterThan => LESSGRATER,
-        TokenType::Plus | TokenType::Minus => SUM,
-        TokenType::Slash | TokenType::Asterisk => PRODUCT,
-        _ => LOWEST,
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Precedence {
+    Lowest = 0,
+    Equal = 1,
+    LessGreater = 2,
+    Sum = 3,
+    Product = 4,
+    Prefix = 5,
+    Call = 6,
+}
+
+impl Precedence {
+    pub fn from_token(token_type: TokenType) -> Option<Precedence> {
+        match token_type {
+            TokenType::Eq |
+            TokenType::NotEq => Some(Precedence::Equal),
+
+            TokenType::LessThan |
+            TokenType::GreaterThan => Some(Precedence::LessGreater),
+
+            TokenType::Plus |
+            TokenType::Minus => Some(Precedence::Sum),
+
+            TokenType::Slash | 
+            TokenType::Asterisk => Some(Precedence::Product),
+            
+            _ => None,
+        }
+    }
+
+    // 如果需要获取数值（很少需要）
+    pub fn value(&self) -> u8 {
+        *self as u8
     }
 }
+
+// 如果你有很多优先级，可以用宏避免手动赋值：
+// macro_rules! define_precedence {
+//     ($($name:ident),* $(,)?) => {
+//         #[repr(u8)]
+//         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+//         pub enum Precedence {
+//             $($name,)*
+//         }
+        
+//         impl Precedence {
+//             $(
+//                 pub const $name: Precedence = Precedence::$name;
+//             )*
+//         }
+//     };
+// }
+
+// // 使用
+// define_precedence! {
+//     Lowest,
+//     Equals,
+//     LessGreater, 
+//     Sum,
+//     Product,
+//     Prefix,
+//     Call,
+// }

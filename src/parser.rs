@@ -1,6 +1,6 @@
 use std::vec::Vec;
 
-use crate::ast;
+use crate::ast::{self, Statement};
 use crate::lexer;
 use crate::token::{self, TokenType};
 
@@ -10,7 +10,7 @@ mod expressions;
 mod errors;
 
 use errors::ParseError;
-use precedence::{token_precedence};
+use precedence::{Precedence};
 
 
 pub struct Parser {
@@ -46,7 +46,7 @@ impl Parser {
     }
 
     pub fn parse_program(&mut self) -> Result<ast::Program, Vec<ParseError>> { 
-        let mut statements: Vec<Box<dyn ast::Statement>> = Vec::new();
+        let mut statements: Vec<Statement> = Vec::new();
         let mut errors = Vec::new();
 
         while self.current_token.token_type != TokenType::Eof {
@@ -65,12 +65,20 @@ impl Parser {
     }
 
 
-    fn peek_precedence(&self) -> i32 {
-        return token_precedence(self.peek_token.token_type)
+    fn peek_precedence(&self) -> Precedence {
+        if let Some(prec) = Precedence::from_token(self.peek_token.token_type) {
+            prec
+        } else {
+            Precedence::Lowest
+        }
     }
 
-    fn current_precedence(&self) -> i32 {
-        return token_precedence(self.current_token.token_type)
+    fn current_precedence(&self) -> Precedence {
+        if let Some(prec) = Precedence::from_token(self.current_token.token_type) {
+            prec
+        } else {
+            Precedence::Lowest
+        }
     }
 
     fn current_token_is(&self, token_type: TokenType) -> bool {
