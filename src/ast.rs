@@ -1,56 +1,69 @@
-use std::{any::Any, fmt};
+use crate::token;
 
 pub trait Node {
     fn token_literal(&self) -> String;
 }
 
-pub trait Statement: Node + fmt::Display + fmt::Debug {
-    fn statement_node(&self);
-    fn as_any(&self) -> &dyn Any;
-}
-
-pub trait Expression: Node + fmt::Display + fmt::Debug {
-    fn expression_node(&self);
-    fn as_any(&self) -> &dyn Any;
-}
-
-pub struct Program {
-    pub statements: Vec<Box<dyn Statement>>,
-}
-
-impl Node for Program {
-    fn token_literal(&self) -> String {
-        if self.statements.len() > 0 {
-            return self.statements[0].token_literal();
-        }
-        "".to_string()
-    }
-}
-
-impl fmt::Display for Program {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for statement in &self.statements {
-            write!(f, "{}", statement)?;
-        }
-        Ok(())
-    }
-}
-
 mod statements;
 mod expressions;
+mod program;
 
 pub use statements::{
     LetStatement, 
     ReturnStatement, 
-    ExpressionStatement
+    ExpressionStatement,
 };
+
 pub use expressions::{
-    MissingExpression,
     Identifier,
     IntegerLiteral, 
     PrefixExpression, 
-    InfixExpression, 
+    InfixExpression,
 };
+
+#[derive(Debug)]
+pub enum Statement {
+    Let {
+        token: token::Token,
+        name: Identifier,
+        value: Box<Expression>,
+    },
+    Return {
+        token: token::Token,
+        return_value: Option<Box<Expression>>,
+    },
+    Expression {
+        token: token::Token,
+        expression: Box<Expression>,
+    },
+}
+
+
+#[derive(Debug)]
+pub enum Expression {
+    Ident(Identifier),
+    IntegerLiteral {
+        token: token::Token,
+        value: i64,
+    },
+    Prefix {
+        token: token::Token,
+        operator: String,
+        right: Box<Expression>,
+    },
+    Infix {
+        token: token::Token,
+        left: Box<Expression>,
+        operator: String,
+        right: Box<Expression>,
+    },
+}
+
+
+pub struct Program {
+    pub statements: Vec<Statement>,
+}
+
 
 
 #[cfg(test)]

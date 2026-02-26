@@ -1,22 +1,63 @@
-use std::{any::Any, fmt};
+use std::fmt;
 
 use crate::token;
 use super::{Node, Statement, Expression};
 use super::expressions::Identifier;
 
+impl Node for Statement {
+    fn token_literal(&self) -> String {
+        match self {
+            Statement::Let {
+                token,
+                name: _,
+                value: _,
+            } => token.literal.clone(),
+            Statement::Return {
+                token,
+                return_value: _,
+            } => token.literal.clone(),
+            Statement::Expression {
+                token,
+                expression: _,
+            } => token.literal.clone(),
+        }
+    }
+}
+
+
+impl fmt::Display for Statement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Statement::Let {
+                token,
+                name,
+                value,
+            } => write!(f, "{} {} = {}", token.literal, name, value),
+            Statement::Return {
+                token,
+                return_value,
+            } => {
+                write!(f, "{}", token.literal)?;
+                if let Some(value) = return_value {
+                    write!(f, " {}", value)?;
+                } else {
+                    f.write_str("<missing_value>")?;
+                }
+                write!(f, ";")
+            },
+            Statement::Expression {
+                token: _,
+                expression,
+            } => write!(f, "{}", expression),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct LetStatement {
     pub token: token::Token,
     pub name: Identifier,
-    pub value: Box<dyn Expression>,
-}
-
-impl Statement for LetStatement {
-    fn statement_node(&self) {}
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
+    pub value: Box<Expression>,
 }
 
 impl Node for LetStatement {
@@ -39,15 +80,7 @@ impl fmt::Display for LetStatement {
 #[derive(Debug)]
 pub struct ReturnStatement {
     pub token: token::Token,
-    pub return_value: Option<Box<dyn Expression>>,
-}
-
-impl Statement for ReturnStatement {
-    fn statement_node(&self) {}
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
+    pub return_value: Option<Box<Expression>>,
 }
 
 impl Node for ReturnStatement {
@@ -73,16 +106,9 @@ impl fmt::Display for ReturnStatement {
 #[derive(Debug)]
 pub struct ExpressionStatement {
     pub token: token::Token,
-    pub expression: Box<dyn Expression>,
+    pub expression: Box<Expression>,
 }
 
-impl Statement for ExpressionStatement {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn statement_node(&self) {}
-}
 
 impl Node for ExpressionStatement {
     fn token_literal(&self) -> String {
@@ -95,3 +121,4 @@ impl fmt::Display for ExpressionStatement {
         write!(f, "{}", &self.expression)
     }
 }
+

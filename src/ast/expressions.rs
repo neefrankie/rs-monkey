@@ -1,29 +1,51 @@
-use std::{any::Any, fmt};
+use std::fmt;
 use crate::token;
 use super::{Node, Expression};
 
-#[derive(Debug)]
-pub struct MissingExpression {
-    pub token: token::Token,
-}
 
-impl Node for MissingExpression {
+impl Node for Expression {
     fn token_literal(&self) -> String {
-        self.token.literal.clone()
+        match self {
+            Expression::Ident(identifier) => identifier.to_string(),
+            Expression::IntegerLiteral { 
+                token, 
+                value: _ 
+            } => token.literal.clone(),
+            Expression::Prefix{
+                token, 
+                operator: _, 
+                right: _
+            } => token.literal.clone(),
+            Expression::Infix{
+                token, 
+                left: _, 
+                operator: _, 
+                right: _
+            } => token.literal.clone(),
+        }
     }
 }
 
-impl Expression for MissingExpression {
-    fn expression_node(&self) {}
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-}
-
-impl fmt::Display for MissingExpression {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "<missing_expression>")
+impl fmt::Display for Expression {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Expression::Ident(identifier) => write!(f, "{}", identifier),
+            Expression::IntegerLiteral {
+                token, 
+                value: _,
+            } => write!(f, "{}", token.literal),
+            Expression::Prefix{
+                token: _, 
+                operator, 
+                right
+            } => write!(f, "({}{})", operator, right),
+            Expression::Infix {
+                token: _,
+                left,
+                operator,
+                right
+            } => write!(f, "({} {} {})", left, operator, right),
+        }
     }
 }
 
@@ -31,14 +53,6 @@ impl fmt::Display for MissingExpression {
 pub struct Identifier {
     pub token: token::Token,
     pub value: String, // token.literal
-}
-
-impl Expression for Identifier {
-    fn expression_node(&self) {}
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
 }
 
 impl Node for Identifier {
@@ -59,14 +73,6 @@ pub struct IntegerLiteral {
     pub value: i64,
 }
 
-impl Expression for IntegerLiteral {
-    fn expression_node(&self) {}
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-}
-
 impl Node for IntegerLiteral {
     fn token_literal(&self) -> String {
         self.token.literal.clone()
@@ -83,15 +89,7 @@ impl fmt::Display for IntegerLiteral {
 pub struct PrefixExpression {
     pub token: token::Token,
     pub operator: String,
-    pub right: Box<dyn Expression>,
-}
-
-impl Expression for PrefixExpression {
-    fn expression_node(&self) {}
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
+    pub right: Box<Expression>,
 }
 
 impl Node for PrefixExpression {
@@ -109,17 +107,9 @@ impl fmt::Display for PrefixExpression {
 #[derive(Debug)]
 pub struct InfixExpression {
     pub token: token::Token,
-    pub left: Box<dyn Expression>,
+    pub left: Box<Expression>,
     pub operator: String,
-    pub right: Box<dyn Expression>,
-}
-
-impl Expression for InfixExpression {
-    fn expression_node(&self) {}
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
+    pub right: Box<Expression>,
 }
 
 impl Node for InfixExpression {
@@ -133,3 +123,4 @@ impl fmt::Display for InfixExpression {
         write!(f, "({} {} {})", self.left, self.operator, self.right)
     }
 }
+

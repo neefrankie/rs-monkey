@@ -5,30 +5,28 @@ use crate::token::{self, TokenType};
 fn test_string() {
     let program = Program {
         statements: vec![
-            Box::new(
-                LetStatement {
+            Statement::Let {
+                token: token::Token {
+                    token_type: TokenType::Let,
+                    literal: "let".to_string(),
+                },
+                name: Identifier {
                     token: token::Token {
-                        token_type: TokenType::Let,
-                        literal: "let".to_string(),
+                        token_type: TokenType::Ident,
+                        literal: "myVar".to_string(),
                     },
-                    name: Identifier {
+                    value: "myVar".to_string(),
+                },
+                value: Box::new(Expression::Ident(
+                    Identifier {
                         token: token::Token {
                             token_type: TokenType::Ident,
-                            literal: "myVar".to_string(),
+                            literal: "anotherVar".to_string(),
                         },
-                        value: "myVar".to_string(),
-                    },
-                    value: Box::new(
-                        Identifier {
-                            token: token::Token {
-                                token_type: TokenType::Ident,
-                                literal: "anotherVar".to_string(),
-                            },
-                            value: "anotherVar".to_string(),
-                        }
-                    ),
-                },
-            )
+                        value: "anotherVar".to_string(),
+                    }
+                )),
+            },
         ]
     };
 
