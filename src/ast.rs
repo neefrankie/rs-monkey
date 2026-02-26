@@ -48,6 +48,10 @@ pub enum Expression {
         operator: String,
         right: Box<Expression>,
     },
+    Boolean {
+        token: token::Token,
+        value: bool,
+    },
 }
 
 

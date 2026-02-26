@@ -33,7 +33,10 @@ impl Parser {
         match token_type {
             TokenType::Ident => self.parse_identifier(),
             TokenType::Int => self.parse_integer(),
-            TokenType::Bang | TokenType::Minus => self.parse_prefix_expression(),
+            TokenType::Bang |
+            TokenType::Minus => self.parse_prefix_expression(),
+            TokenType::True |
+            TokenType::False => self.parse_boolean(),
             _ => Err(ParseError::NoPrefixParseFn {
                 token_type
             })
@@ -61,6 +64,13 @@ impl Parser {
         return Ok(Expression::IntegerLiteral {
             token: self.current_token.clone(),
             value: value,
+        });
+    }
+
+    fn parse_boolean(&mut self) -> Result<Expression, ParseError> { 
+        return Ok(Expression::Boolean {
+            token: self.current_token.clone(),
+            value: self.current_token_is(TokenType::True),
         });
     }
 

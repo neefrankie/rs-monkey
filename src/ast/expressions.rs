@@ -19,6 +19,10 @@ impl Node for Expression {
                 token, 
                 ..
             } => token.literal.clone(),
+            Expression::Boolean {
+                token,
+                ..
+            } => token.literal.clone(),
         }
     }
 }
@@ -26,22 +30,28 @@ impl Node for Expression {
 impl fmt::Display for Expression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Expression::Ident(identifier) => write!(f, "{}", identifier),
+            Expression::Ident(
+                identifier
+            ) => write!(f, "{}", identifier),
             Expression::IntegerLiteral {
                 token, 
-                value: _,
+                ..
             } => write!(f, "{}", token.literal),
             Expression::Prefix{
-                token: _, 
                 operator, 
-                right
+                right,
+                ..
             } => write!(f, "({}{})", operator, right),
             Expression::Infix {
-                token: _,
                 left,
                 operator,
-                right
+                right,
+                ..
             } => write!(f, "({} {} {})", left, operator, right),
+            Expression::Boolean {
+                token,
+                ..
+            } => write!(f, "{}", token.literal),
         }
     }
 }
