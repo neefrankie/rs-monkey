@@ -9,18 +9,15 @@ impl Node for Expression {
             Expression::Ident(identifier) => identifier.to_string(),
             Expression::IntegerLiteral { 
                 token, 
-                value: _ 
+                .. 
             } => token.literal.clone(),
             Expression::Prefix{
                 token, 
-                operator: _, 
-                right: _
+                ..
             } => token.literal.clone(),
             Expression::Infix{
                 token, 
-                left: _, 
-                operator: _, 
-                right: _
+                ..
             } => token.literal.clone(),
         }
     }
@@ -49,6 +46,55 @@ impl fmt::Display for Expression {
     }
 }
 
+impl Expression {
+    pub fn as_identifier(&self) -> Option<&Identifier> {
+        match self {
+            Expression::Ident(identifier) => Some(identifier),
+            _ => None,
+        }
+    }
+
+    pub fn as_integral(&self) -> Option<i64> {
+        match self {
+            Expression::IntegerLiteral {
+                value,
+                ..
+            } => Some(*value),
+            _ => None,
+        }
+    }
+
+    pub fn as_prefix(&self) -> Option<(String, &Expression)> {
+        match self {
+            Expression::Prefix {
+                operator,
+                right,
+                ..
+            } => Some((
+                operator.clone(),
+                right.as_ref(),
+            )),
+            _ => None,
+        }
+    }
+
+    pub fn as_infix(&self) -> Option<(&Expression, String, &Expression)> {
+        match self {
+            Expression::Infix {
+                left,
+                operator,
+                right,
+                ..
+            } => Some((
+                left.as_ref(),
+                operator.clone(),
+                right.as_ref(),
+            )),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Identifier {
     pub token: token::Token,
@@ -64,63 +110,6 @@ impl Node for Identifier {
 impl fmt::Display for Identifier {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.value)
-    }
-}
-
-#[derive(Debug)]
-pub struct IntegerLiteral {
-    pub token: token::Token,
-    pub value: i64,
-}
-
-impl Node for IntegerLiteral {
-    fn token_literal(&self) -> String {
-        self.token.literal.clone()
-    }
-}
-
-impl fmt::Display for IntegerLiteral {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.token.literal)
-    }
-}
-
-#[derive(Debug)]
-pub struct PrefixExpression {
-    pub token: token::Token,
-    pub operator: String,
-    pub right: Box<Expression>,
-}
-
-impl Node for PrefixExpression {
-    fn token_literal(&self) -> String {
-        self.token.literal.clone()
-    }
-}
-
-impl fmt::Display for PrefixExpression {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "({}{})", self.operator, self.right)
-    }
-}
-
-#[derive(Debug)]
-pub struct InfixExpression {
-    pub token: token::Token,
-    pub left: Box<Expression>,
-    pub operator: String,
-    pub right: Box<Expression>,
-}
-
-impl Node for InfixExpression {
-    fn token_literal(&self) -> String {
-        self.token.literal.clone()
-    }
-}
-
-impl fmt::Display for InfixExpression {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "({} {} {})", self.left, self.operator, self.right)
     }
 }
 

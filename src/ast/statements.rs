@@ -1,6 +1,5 @@
 use std::fmt;
 
-use crate::token;
 use super::{Node, Statement, Expression};
 use super::expressions::Identifier;
 
@@ -9,16 +8,15 @@ impl Node for Statement {
         match self {
             Statement::Let {
                 token,
-                name: _,
-                value: _,
+                ..
             } => token.literal.clone(),
             Statement::Return {
                 token,
-                return_value: _,
+                ..
             } => token.literal.clone(),
             Statement::Expression {
                 token,
-                expression: _,
+                ..
             } => token.literal.clone(),
         }
     }
@@ -53,72 +51,45 @@ impl fmt::Display for Statement {
     }
 }
 
-#[derive(Debug)]
-pub struct LetStatement {
-    pub token: token::Token,
-    pub name: Identifier,
-    pub value: Box<Expression>,
-}
-
-impl Node for LetStatement {
-    fn token_literal(&self) -> String {
-        self.token.literal.clone()
-    }
-}
-
-impl fmt::Display for LetStatement {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {} = {};",
-            self.token_literal(), 
-            self.name,
-            self.value
-        )
-    }
-}
-
-
-#[derive(Debug)]
-pub struct ReturnStatement {
-    pub token: token::Token,
-    pub return_value: Option<Box<Expression>>,
-}
-
-impl Node for ReturnStatement {
-    fn token_literal(&self) -> String {
-        self.token.literal.clone()
-    }
-}
-
-impl fmt::Display for ReturnStatement {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.token_literal())?;
-
-        if let Some(value) = &self.return_value {
-            write!(f, " {}", value)?;
-        } else {
-            f.write_str("<missing_value>")?;
+impl Statement {
+    pub fn as_expression(&self) -> Option<&Expression> {
+        match self {
+            Statement::Expression {
+                token: _,
+                expression,
+            } => Some(expression),
+            _ => None,
         }
+    }
 
-        write!(f, ";")
+    pub fn as_let(&self) -> Option<(&Identifier, &Expression)> {
+        match self {
+            Statement::Let {
+                name,
+                value,
+                ..
+            } => Some((name, value.as_ref())),
+            _ => None,
+        }
+    }
+
+    pub fn as_return(&self) -> Option<&Expression> {
+        match self {
+            Statement::Return {
+                return_value,
+                ..
+            } => return_value.as_deref(),
+            _ => None,
+        }
+    }
+
+    pub fn is_expression(&self) -> bool {
+        matches!(self, Statement::Expression { .. })
+    }
+
+    pub fn is_let(&self) -> bool {
+        matches!(self, Statement::Let { .. })
     }
 }
 
-#[derive(Debug)]
-pub struct ExpressionStatement {
-    pub token: token::Token,
-    pub expression: Box<Expression>,
-}
-
-
-impl Node for ExpressionStatement {
-    fn token_literal(&self) -> String {
-        self.token.literal.clone()
-    }
-}
-
-impl fmt::Display for ExpressionStatement {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", &self.expression)
-    }
-}
 

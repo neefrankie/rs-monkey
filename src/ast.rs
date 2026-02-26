@@ -8,17 +8,8 @@ mod statements;
 mod expressions;
 mod program;
 
-pub use statements::{
-    LetStatement, 
-    ReturnStatement, 
-    ExpressionStatement,
-};
-
 pub use expressions::{
     Identifier,
-    IntegerLiteral, 
-    PrefixExpression, 
-    InfixExpression,
 };
 
 #[derive(Debug)]

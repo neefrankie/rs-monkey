@@ -49,28 +49,23 @@ fn test_let_statement(stmt: &Statement, expected_name: &str) -> bool {
         return false;
     }
 
-    let Statement::Let{
-        token, 
-        name, 
-        value
-    } = stmt else {
-        println!("Statement is not a LetStatement");
-        return false;
-    };
+    let (let_name, _) = stmt.as_let()
+        .expect("stmt is not a LetStatement");
 
-    if name.value != expected_name {
-        println!("Expected '{}', got '{}'",
-            expected_name, 
-            name,
+    if let_name.value != expected_name {
+        eprintln!(
+            "Statement.Let.name.value not '{}'. got '{}'", 
+            expected_name,
+            let_name.value
         );
         return false;
     }
 
-    if name.token_literal() != expected_name {
-        println!(
-            "Expected '{}', got '{}'", 
-            name,
-            token.literal
+    if let_name.token_literal() != expected_name {
+        eprintln!(
+            "Statement.Let.name.token_literal() not '{}', got '{}'", 
+            expected_name,
+            let_name.token_literal()
         );
         return false;
     }
@@ -144,7 +139,7 @@ return 993 322;
         assert_eq!(
             stmt.token_literal(),
             "return",
-            "return statement does not 'return', got {}",
+            "returnStmt.token_literal not 'return', got {}",
             stmt.token_literal()
         )
     }
@@ -165,29 +160,25 @@ fn test_identifier_expression() {
         program.statements.len()
     );
 
-    let Statement::Expression {
-        token,
-        expression,
-    } = &program.statements[0] else {
-        panic!("stmt is not an ExpressionStatement");
-    };
+    let expr = program.statements[0]
+        .as_expression()
+        .expect("program.statements[0] is not an ExpressionStatement");
 
-    let Expression::Ident(identifier) = &**expression else {
-        panic!("expression is not an Identifier");
-    };
+    let ident = expr.as_identifier()
+        .expect("expression is not an Identifier");
 
     assert_eq!(
-        identifier.value,
+        ident.value,
         "foobar",
         "Identifier has wrong value. got={}",
-        identifier.value
+        ident.value
     );
 
     assert_eq!(
-        identifier.token_literal(),
+        ident.token_literal(),
         "foobar",
         "Identifier has wrong token_literal. got={}",
-        identifier.token_literal()
+        ident.token_literal()
 
     );
 }
@@ -205,24 +196,28 @@ fn test_integer_literal_expression() {
         "program has not enough statements. got={}",
         program.statements.len()
     );
-    let Statement::Expression { 
-        token, 
-        expression 
-    } = &program.statements[0] else {
-        panic!("program.statements[0] is not ExpressionStatement")
-    };
-    let Expression::IntegerLiteral { 
-        token, 
-        value 
-    } = &**expression else {
-        panic!("expression is not IntegerLiteral")
-    };
+ 
+    let expr = program.statements[0]
+        .as_expression()
+        .expect("program.statements[0] is not ExpressionStatement");
+
+    let literal_value = expr.as_integral()
+        .expect("expr is not IntegerLiteral");
 
     assert_eq!(
-        &*expression.token_literal(),
+        literal_value,
+        5,
+        "IntegralLiteral.value is not {}, got {}",
+        5,
+        literal_value
+    );
+
+    assert_eq!(
+        expr.token_literal(),
         "5",
-        "Literal has wrong token_literal. got={}",
-        &*expression.token_literal()
+        "IntegralLiteral.token_literal not {}. got={}",
+        "5",
+        expr.token_literal()
     );
 }
 
@@ -245,57 +240,54 @@ fn test_parsing_prefix_expressions() {
             program.statements.len()
         );
 
-        let Statement::Expression { 
-            token, 
-            expression 
-        } = &program.statements[0] else {
-            panic!("program.statements[0] is not ExpressionStatement")
-        };
-        let Expression::Prefix {
-            token,
-            operator,
-            right,
-        } = &**expression else {
-            panic!("stmt is not a Prefix expression");
-        };
+        let expr = program.statements[0]
+            .as_expression()
+            .expect("program.statements[0] is not ExpressionStatement");
+
+        let (prefix_op, prefix_right) = expr.as_prefix()
+            .expect("expr is not Expression::Prefix");
         
         assert_eq!(
-            operator,
+            prefix_op,
             expected_operator,
             "exp.Operator is not {}. got={}",
             expected_operator,
-            operator
+            prefix_op
         );
 
         test_integer_literal(
-            &**right, 
+            prefix_right, 
             expected_value
         );
     }
 }
 
-fn test_integer_literal(iteg: &Expression, expected_value: i64) {
-    let Expression::IntegerLiteral {
-        token, 
-        value 
-    } = iteg else {
-        panic!("exp is not IntegerLiteral. got={:?}", iteg);
+fn test_integer_literal(il: &Expression, expected_value: i64) -> bool {
+
+    let Some(integ) = il.as_integral() else {
+        eprintln!(
+            "il not Expression::IntegerLiteral. got={}",
+            il
+        );
+        return false;
     };
 
     assert_eq!(
-        *value,
+        integ,
         expected_value,
-        "iteg.value is not {}. got={}",
+        "IntegralLiteral.value is not {}. got={}",
         expected_value,
-        *value
+        integ,
     );
     assert_eq!(
-        iteg.token_literal(),
-        value.to_string(),
+        il.token_literal(),
+        integ.to_string(),
         "iteg.token_literal is not {}. got={}",
-        value,
-        iteg.token_literal()
+        integ,
+        il.token_literal()
     );
+
+    return true;
 }
 
 #[test]
@@ -324,37 +316,32 @@ fn test_parsing_infix_expressions() {
             "program has not enough statements. got={}",
             program.statements.len()
         );
-        let Statement::Expression {
-            token, 
-            expression 
-        } = &program.statements[0] else {
-            panic!("statement is not an ExpressionStatement")
-        };
 
-        let Expression::Infix {
-            token,
-            left,
-            operator,
-            right 
-        } = &**expression else {
-            panic!("expression is not an InfixExpression")
-        };
+        let expr = program.statements[0]
+            .as_expression()
+            .expect("statement is not an ExpressionStatement");
+
+        let (
+            infix_left, 
+            infix_operator, 
+            infix_right
+        ) = expr.as_infix().expect("expression is not an InfixExpression");
 
         test_integer_literal(
-            left, 
+            infix_left, 
             left_value
         );
         
         assert_eq!(
-            operator,
+            infix_operator,
             expected_operator,
             "exp.operator is not {}. got={}",
             expected_operator,
-            operator
+            infix_operator
         );
 
         test_integer_literal(
-            right,
+            infix_right,
             right_value
         );
     }
