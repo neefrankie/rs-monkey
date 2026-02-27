@@ -1,4 +1,4 @@
-use crate::ast::{self, Expression};
+use crate::ast::{self, BlockStatement, Expression, Identifier, Statement};
 use crate::token::{TokenType};
 
 use super::errors::ParseError;
@@ -32,11 +32,21 @@ impl Parser {
         print!("parse_prefix\n");
         match token_type {
             TokenType::Ident => self.parse_identifier(),
+
             TokenType::Int => self.parse_integer(),
+
             TokenType::Bang |
             TokenType::Minus => self.parse_prefix_expression(),
+
             TokenType::True |
             TokenType::False => self.parse_boolean(),
+
+            TokenType::LParen => self.parse_grouped_expression(),
+
+            TokenType::If => self.parse_if_expression(),
+
+            TokenType::Function => self.parse_function_literal(),
+
             _ => Err(ParseError::NoPrefixParseFn {
                 token_type
             })
@@ -90,6 +100,151 @@ impl Parser {
         });
     }
 
+    fn parse_grouped_expression(&mut self) -> Result<Expression, ParseError> {
+        self.next_token();
+
+        let exp = self.parse_expression(Precedence::Lowest)?;
+
+        self.expect_peek(TokenType::RParen)?;
+
+        return Ok(exp);
+    }
+
+    fn parse_if_expression(&mut self) -> Result<Expression, ParseError> {
+        // if (x > y) {
+        //     return x;
+        // } else {
+        //     return y;
+        // }
+        let if_token = self.current_token.clone();
+
+        self.expect_peek(TokenType::LParen)?;
+
+        self.next_token();
+
+        let condition = self.parse_expression(Precedence::Lowest)?;
+
+        self.expect_peek(TokenType::RParen)?;
+
+        self.expect_peek(TokenType::LBrace)?;
+
+        let consequence = self.parse_block_statement()?;
+
+        // Current token now points to }.
+        let mut alternative: Option<BlockStatement> = None;
+        // Is next token an else?
+        // 如果遇到 else，则将词法单元前移两位。
+        if self.peek_token_is(TokenType::Else) {
+            // 前移 Skip the else token
+            self.next_token();
+            // Next token should be an opening brace
+            // 前移 Skip the opening brace
+            self.expect_peek(TokenType::LBrace)?;
+
+            let alt = self.parse_block_statement()?;
+
+            alternative = Some(alt);
+        }
+
+        return Ok(Expression::If {
+            token: if_token,
+            condition: Box::new(condition),
+            consequence,
+            alternative: alternative,
+        });
+    }
+
+    fn parse_block_statement(&mut self) -> Result<BlockStatement, ParseError> {
+        // curent token point to {.
+        let token = self.current_token.clone();
+        let mut statements: Vec<Statement> = Vec::new();
+
+        self.next_token();
+        // 反复调用 parse_statement，知道遇见右大括号 }
+        // 或 TokenType::Eof，前者表示到了块语句的末尾，
+        // 后者表示没有要解析的词法单元。
+        while !self.current_token_is(TokenType::RBrace) && !self.current_token_is(TokenType::Eof) {
+            let statement = self.parse_statement()?;
+            statements.push(statement);
+            self.next_token();
+        }
+
+        return Ok(BlockStatement {
+            token,
+            statements,
+        });
+    }
+
+    fn parse_function_literal(&mut self) -> Result<Expression, ParseError> {
+        // fn (x, y) {
+        //  return x + y;
+        // }
+        // fn () {
+        //  return foobar + barfoo;
+        // }
+        // let myFunction = fn (x, y) {
+        //  return x + y;
+        // };
+        // fn() {
+        //  return fn(x, y) { return x + y;};
+        // }
+        // myFunc(x, y, fn(x, y) { return x + y; });
+        // 
+        // Current token: fn
+        let token = self.current_token.clone();
+        // Current token: (
+        self.expect_peek(TokenType::LParen)?;
+
+        let parameters = self.parse_function_parameters()?;
+
+        self.expect_peek(TokenType::LBrace)?;
+
+        let body = self.parse_block_statement()?;
+
+        Ok(Expression::FunctionLiteral {
+            token,
+            parameters,
+            body,
+        })
+    }
+
+    fn parse_function_parameters(&mut self) -> Result<Vec<Identifier>, ParseError> {
+        // Current token: (
+        let mut identifiers: Vec<Identifier> = vec![];
+        
+        if self.peek_token_is(TokenType::RParen) {
+            self.next_token();
+            return Ok(identifiers);
+        }
+        // Skip (.
+        self.next_token();
+
+        let ident = Identifier {
+            token: self.current_token.clone(),
+            value: self.current_token.literal.clone(),
+        };
+        identifiers.push(ident);
+
+        while self.peek_token_is(TokenType::Comma) {
+            // Skip ,.
+            self.next_token();
+            // Point to next parameter.
+            self.next_token();
+
+            let ident = Identifier {
+                token: self.current_token.clone(),
+                value: self.current_token.literal.clone(),
+            };
+            identifiers.push(ident);
+        }
+        // Expect }.
+        self.expect_peek(TokenType::RBrace)?;
+
+        return Ok(identifiers);
+    }
+
+    
+
     fn parse_infix(&mut self, token_type: TokenType, left: Expression) -> Result<Expression, ParseError> {
         print!("parse_infix {:?}\n", token_type);
         match token_type {
@@ -101,6 +256,8 @@ impl Parser {
             TokenType::NotEq |
             TokenType::LessThan |
             TokenType::GreaterThan => self.parse_infix_expression(left),
+
+            TokenType::LParen => self.parse_call_expression(left),
 
             _ => Err(ParseError::NoInfixParseFn {
                 token_type
@@ -129,5 +286,48 @@ impl Parser {
             operator,
             right: Box::new(right),
         })
+    }
+
+    fn parse_call_expression(&mut self, function: Expression) -> Result<Expression, ParseError> {
+        // For function call, add(2, 3), the left
+        // parenthesis is an infix operator.
+        // current token points to '('
+        let token = self.current_token.clone();
+        let args = self.parse_call_arguments()?;
+        
+        return Ok(Expression::Call {
+            token,
+            function: Box::new(function),
+            arguments: args,
+        })
+    }
+
+    fn parse_call_arguments(&mut self) -> Result<Vec<Expression>, ParseError> {
+        // current token points to '('
+        let mut args: Vec<Expression> = Vec::new();
+
+        // Empty arguments.
+        if self.peek_token_is(TokenType::RParen) {
+            self.next_token();
+            return Ok(args);
+        }
+        // Skip '('
+        self.next_token();
+        let arg = self.parse_expression(Precedence::Lowest)?;
+        args.push(arg);
+        
+        while self.peek_token_is(TokenType::Comma) {
+            // Skip ','
+            self.next_token();
+            // Check if next token is ) here?
+            // Next argument.
+            self.next_token();
+            let arg = self.parse_expression(Precedence::Lowest)?;
+            args.push(arg);
+        }
+
+        self.expect_peek(TokenType::RParen)?;
+
+        Ok(args)
     }
 }
