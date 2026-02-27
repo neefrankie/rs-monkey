@@ -27,6 +27,8 @@ impl Precedence {
 
             TokenType::Slash | 
             TokenType::Asterisk => Some(Precedence::Product),
+
+            TokenType::LParen => Some(Precedence::Call),
             
             _ => None,
         }
