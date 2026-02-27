@@ -1,4 +1,4 @@
-use crate::token::{TokenType};
+use crate::token::{Token, TokenType};
 use crate::ast::{Expression, Node, Program, Statement};
 use crate::lexer::{Lexer};
 
@@ -8,40 +8,29 @@ use super::errors::ParseError;
 
 #[test]
 fn test_precedence() {
-    let tests = vec![
-        (TokenType::Eq, Precedence::Equal),
-        (TokenType::NotEq, Precedence::Equal),
-        (TokenType::LessThan, Precedence::LessGreater),
-        (TokenType::GreaterThan, Precedence::LessGreater),
-        (TokenType::Plus, Precedence::Sum),
-        (TokenType::Minus, Precedence::Sum),
-        (TokenType::Slash, Precedence::Product),
-        (TokenType::Asterisk, Precedence::Product),
-    ];
-
-    for (token_type, prec) in tests {
-        let got = Precedence::from_token(token_type).expect("unknown precedence");
-        assert_eq!(
-            got,
-            prec,
-        )
-    }
-
-    let tests = vec![
-        (TokenType::Eq, Precedence::LessGreater),
-        (TokenType::LessThan, Precedence::Sum),
-        (TokenType::Plus, Precedence::Product),
-        (TokenType::Slash, Precedence::Call),
-    ];
-
-    for (token_type, precedence) in tests {
-        let got = Precedence::from_token(token_type).expect("unknown precedence");
-        assert!(
-            got < precedence,
-        )
-    }
+    assert!(Precedence::Lowest < Precedence::Equal);
+    assert!(Precedence::Equal < Precedence::LessGreater);
+    assert!(Precedence::LessGreater < Precedence::Sum);
+    assert!(Precedence::Sum < Precedence::Product);
+    assert!(Precedence::Product < Precedence::Prefix);
+    assert!(Precedence::Prefix < Precedence::Call);
 }
 
+#[test]
+fn test_precedence_from_token() {
+    assert_eq!(
+        Precedence::from_token(TokenType::Plus),
+        Some(Precedence::Sum)
+    );
+    assert_eq!(
+        Precedence::from_token(TokenType::Asterisk), 
+        Some(Precedence::Product)
+    );
+    assert_eq!(
+        Precedence::from_token(TokenType::LBrace),
+        None
+    );
+}
 
 fn test_let_statement(stmt: &Statement, expected_name: &str) -> bool {
     if stmt.token_literal() != "let".to_string() {
@@ -299,6 +288,33 @@ fn test_integer_literal(il: &Expression, expected_value: i64) -> bool {
     return true;
 }
 
+fn test_boolean_literal(exp: &Expression, value: bool) -> bool {
+    let Some(bo) = exp.as_boolean() else {
+        eprintln!(
+            "exp not Expression::Boolean. got={}",
+            exp
+        );
+        return false;
+    };
+
+    assert_eq!(
+        bo,
+        value,
+        "Boolean.value is not {}. got={}",
+        value,
+        bo,
+    );
+    assert_eq!(
+        exp.token_literal(),
+        bo.to_string(),
+        "bo.token_literal not {}. got={}",
+        value,
+        exp.token_literal()
+    );
+
+    return true;
+}
+
 fn test_literal_expression(exp: &Expression, expected: &Expression) -> bool {
     match expected {
         Expression::IntegerLiteral { value, .. } => {
@@ -306,6 +322,10 @@ fn test_literal_expression(exp: &Expression, expected: &Expression) -> bool {
         }
         Expression::Ident(identifier) => {
             test_identifier(exp, identifier.value.clone())
+        }
+        Expression::Boolean { value , ..} => {
+            test_boolean_literal(exp, *value)
+
         }
         _ => {
             eprintln!("type of exp not handled. got {}", exp);
@@ -316,13 +336,40 @@ fn test_literal_expression(exp: &Expression, expected: &Expression) -> bool {
 
 #[test]
 fn test_parsing_infix_expressions() {
+    let five = Expression::IntegerLiteral {
+         token: Token {
+            token_type: TokenType::Int,
+            literal: "5".to_string(),
+         }, 
+         value: 5,
+    };
+
+    let bool_true = Expression::Boolean {
+         token: Token {
+            token_type: TokenType::True,
+            literal: "true".to_string(),
+         }, 
+         value: true,
+    };
+
+    let bool_false = Expression::Boolean {
+         token: Token {
+            token_type: TokenType::False,
+            literal: "false".to_string(),
+         }, 
+         value: false,
+    };
+
     let tests = vec![
-        ("5 + 5;", 5, "+", 5),
-        ("5 - 5;", 5, "-", 5),
-        ("5 * 5;", 5, "*", 5),
-        ("5 / 5;", 5, "/", 5),
-        ("5 > 5;", 5, ">", 5),
-        ("5 < 5;", 5, "<", 5),
+        ("5 + 5;", &five, "+", &five),
+        ("5 - 5;", &five, "-", &five),
+        ("5 * 5;", &five, "*", &five),
+        ("5 / 5;", &five, "/", &five),
+        ("5 > 5;", &five, ">", &five),
+        ("5 < 5;", &five, "<", &five),
+        ("true == true", &bool_true, "==", &bool_true),
+        ("true != false", &bool_true, "!=", &bool_false),
+        ("false == false", &bool_false, "==", &bool_false),
     ];
 
     for (
@@ -345,27 +392,10 @@ fn test_parsing_infix_expressions() {
             .as_expression()
             .expect("statement is not an ExpressionStatement");
 
-        let (
-            infix_left, 
-            infix_operator, 
-            infix_right
-        ) = expr.as_infix().expect("expression is not an InfixExpression");
-
-        test_integer_literal(
-            infix_left, 
-            left_value
-        );
-        
-        assert_eq!(
-            infix_operator,
-            expected_operator,
-            "exp.operator is not {}. got={}",
-            expected_operator,
-            infix_operator
-        );
-
-        test_integer_literal(
-            infix_right,
+        test_infix_expression(
+            expr, 
+            left_value, 
+            expected_operator.to_string(), 
             right_value
         );
     }
@@ -426,6 +456,10 @@ fn test_operator_precedence_parsing() {
         ("5 > 4 == 3 < 4", "((5 > 4) == (3 < 4))"),
         ("5 < 4 != 3 > 4", "((5 < 4) != (3 > 4))"),
         ("3 + 4 * 5 == 3 * 1 + 4 * 5", "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))"),
+        ("true", "true"),
+        ("false", "false"),
+        ("3 > 5 == false", "((3 > 5) == false)"),
+        ("3 < 5 == true", "((3 < 5) == true)"),
     ];
 
     for (input, expected) in tests {
