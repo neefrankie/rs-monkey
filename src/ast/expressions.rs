@@ -1,25 +1,43 @@
 use std::fmt;
-use crate::token;
-use super::{Node, Expression};
+use super::{Node, Expression, Identifier};
 
 
 impl Node for Expression {
     fn token_literal(&self) -> String {
         match self {
             Expression::Ident(identifier) => identifier.to_string(),
+
             Expression::IntegerLiteral { 
                 token, 
                 .. 
             } => token.literal.clone(),
+
             Expression::Prefix{
                 token, 
                 ..
             } => token.literal.clone(),
+
             Expression::Infix{
                 token, 
                 ..
             } => token.literal.clone(),
+
             Expression::Boolean {
+                token,
+                ..
+            } => token.literal.clone(),
+
+            Expression::If { 
+                token,
+                ..
+            } => token.literal.clone(),
+
+            Expression::FunctionLiteral { 
+                token,
+                .. 
+            } => token.literal.clone(),
+
+            Expression::Call { 
                 token,
                 ..
             } => token.literal.clone(),
@@ -52,6 +70,62 @@ impl fmt::Display for Expression {
                 token,
                 ..
             } => write!(f, "{}", token.literal),
+
+            Expression::If {
+                condition,
+                consequence,
+                alternative,
+                ..
+            } => {
+                write!(
+                    f,
+                    "if {} {}",
+                    condition,
+                    consequence
+                )?;
+
+                match alternative {
+                    Some(alt) => {
+                        write!(f, " else {}", alt)
+                    },
+                    None => Ok(()),
+                }
+            },
+
+            Expression::FunctionLiteral {
+                token,
+                parameters,
+                body 
+            } => {
+                let params = parameters.iter()
+                    .map(|p| p.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                write!(
+                    f, 
+                    "{} ({}) {}", 
+                    token.literal, 
+                    params, 
+                    body
+                )
+            },
+
+            Expression::Call {
+                function,
+                arguments,
+                ..
+            } => {
+                let args = arguments.iter()
+                    .map(|a| a.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                write!(
+                    f, 
+                    "{} ({})", 
+                    function, 
+                    args
+                )
+            },
         }
     }
 }
@@ -67,6 +141,16 @@ impl Expression {
     pub fn as_integral(&self) -> Option<i64> {
         match self {
             Expression::IntegerLiteral {
+                value,
+                ..
+            } => Some(*value),
+            _ => None,
+        }
+    }
+
+    pub fn as_boolean(&self) -> Option<bool> {
+        match self {
+            Expression::Boolean {
                 value,
                 ..
             } => Some(*value),
@@ -105,11 +189,6 @@ impl Expression {
     }
 }
 
-#[derive(Debug)]
-pub struct Identifier {
-    pub token: token::Token,
-    pub value: String, // token.literal
-}
 
 impl Node for Identifier {
     fn token_literal(&self) -> String {
