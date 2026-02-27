@@ -1,16 +1,19 @@
 use crate::token;
 
-pub trait Node {
-    fn token_literal(&self) -> String;
-}
 
 mod statements;
 mod expressions;
 mod program;
 
-pub use expressions::{
-    Identifier,
-};
+pub trait Node {
+    fn token_literal(&self) -> String;
+}
+
+#[derive(Debug)]
+pub struct Identifier {
+    pub token: token::Token,
+    pub value: String, // token.literal
+}
 
 #[derive(Debug)]
 pub enum Statement {
@@ -29,6 +32,11 @@ pub enum Statement {
     },
 }
 
+#[derive(Debug)]
+pub struct BlockStatement {
+    pub token: token::Token,
+    pub statements: Vec<Statement>,
+}
 
 #[derive(Debug)]
 pub enum Expression {
@@ -36,6 +44,10 @@ pub enum Expression {
     IntegerLiteral {
         token: token::Token,
         value: i64,
+    },
+    Boolean {
+        token: token::Token,
+        value: bool,
     },
     Prefix {
         token: token::Token,
@@ -48,9 +60,21 @@ pub enum Expression {
         operator: String,
         right: Box<Expression>,
     },
-    Boolean {
+    If {
         token: token::Token,
-        value: bool,
+        condition: Box<Expression>,
+        consequence: BlockStatement,
+        alternative: Option<BlockStatement>,
+    },
+    FunctionLiteral {
+        token: token::Token,
+        parameters: Vec<Identifier>,
+        body: BlockStatement,
+    },
+    Call {
+        token: token::Token,
+        function: Box<Expression>,
+        arguments: Vec<Expression>,
     },
 }
 
