@@ -1,7 +1,6 @@
 use std::fmt;
 
-use super::{Node, Statement, Expression};
-use super::expressions::Identifier;
+use super::{Node, Statement, Expression, Identifier, BlockStatement};
 
 impl Node for Statement {
     fn token_literal(&self) -> String {
@@ -93,3 +92,14 @@ impl Statement {
 }
 
 
+impl Node for BlockStatement {
+    fn token_literal(&self) -> String {
+        self.token.literal.clone()
+    }
+}
+
+impl fmt::Display for BlockStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.statements.iter().map(|s| s.to_string()).collect::<Vec<_>>().join("\n"))
+    }
+}
