@@ -31,7 +31,7 @@ impl Parser {
 
         self.next_token(); // consume '='
         
-        // Current token is point to '5' in let x = 5;
+        // Current token points to '5' in let x = 5;
         let value = self.parse_expression(Precedence::Lowest)?;
 
         while !self.current_token_is(TokenType::Semicolon) {
@@ -54,7 +54,7 @@ impl Parser {
 
         println!("parse_return: move to next token {}", self.current_token.literal);
 
-        // TODO: return value should be None if there is no expression after `return`
+        // return value should be None if there is no expression after `return`
         // return;
         // return 5;
         // return 5 + 5;
