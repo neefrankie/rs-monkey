@@ -1,4 +1,4 @@
-use crate::ast::{self, BlockStatement, Expression, Identifier, Statement};
+use crate::ast::{self, BlockStatement, Expression, Identifier};
 use crate::token::{TokenType};
 
 use super::errors::ParseError;
@@ -118,14 +118,15 @@ impl Parser {
         // }
         let if_token = self.current_token.clone();
 
+        // Move to (.
         self.expect_peek(TokenType::LParen)?;
-
+        // Move to x.
         self.next_token();
-
+        // x > y
         let condition = self.parse_expression(Precedence::Lowest)?;
-
+        // Move to )
         self.expect_peek(TokenType::RParen)?;
-
+        // Move to {.
         self.expect_peek(TokenType::LBrace)?;
 
         let consequence = self.parse_block_statement()?;
@@ -151,27 +152,6 @@ impl Parser {
             condition: Box::new(condition),
             consequence,
             alternative: alternative,
-        });
-    }
-
-    fn parse_block_statement(&mut self) -> Result<BlockStatement, ParseError> {
-        // curent token point to {.
-        let token = self.current_token.clone();
-        let mut statements: Vec<Statement> = Vec::new();
-
-        self.next_token();
-        // 反复调用 parse_statement，知道遇见右大括号 }
-        // 或 TokenType::Eof，前者表示到了块语句的末尾，
-        // 后者表示没有要解析的词法单元。
-        while !self.current_token_is(TokenType::RBrace) && !self.current_token_is(TokenType::Eof) {
-            let statement = self.parse_statement()?;
-            statements.push(statement);
-            self.next_token();
-        }
-
-        return Ok(BlockStatement {
-            token,
-            statements,
         });
     }
 
@@ -267,7 +247,7 @@ impl Parser {
 
     fn parse_infix_expression(&mut self, left: Expression) -> Result<Expression, ParseError> {
         println!("parse_infix_expression\n");
-
+        // current token points to +, -, /, *, ==, !=, <, >.
         let current_token = self.current_token.clone();
         let operator = self.current_token.literal.clone();
 

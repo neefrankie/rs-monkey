@@ -5,7 +5,7 @@ use crate::lexer;
 use crate::token::{self, TokenType};
 
 mod precedence;
-mod statments;
+mod statements;
 mod expressions;
 mod errors;
 
