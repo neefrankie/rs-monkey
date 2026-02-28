@@ -54,8 +54,6 @@ impl Parser {
     }
 
     fn parse_identifier(&mut self) -> Result<Expression, ParseError> {
-        println!("parse_identifier: {}\n", self.current_token.literal);
-
         return Ok(Expression::Ident(ast::Identifier {
             token: self.current_token.clone(),
             value: self.current_token.literal.clone(),
@@ -63,8 +61,6 @@ impl Parser {
     }
 
     fn parse_integer(&mut self) -> Result<Expression, ParseError> {
-        println!("parse_integer\n");
-
         let Ok(value) = self.current_token.literal.parse::<i64>() else {
             return Err(ParseError::ExpectedInt {
                 got: self.current_token.literal.clone(),
