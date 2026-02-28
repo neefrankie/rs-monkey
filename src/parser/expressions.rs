@@ -193,6 +193,7 @@ impl Parser {
         let mut identifiers: Vec<Identifier> = vec![];
         
         if self.peek_token_is(TokenType::RParen) {
+            // Skip ).
             self.next_token();
             return Ok(identifiers);
         }
@@ -217,8 +218,8 @@ impl Parser {
             };
             identifiers.push(ident);
         }
-        // Expect }.
-        self.expect_peek(TokenType::RBrace)?;
+        // Expect ).
+        self.expect_peek(TokenType::RParen)?;
 
         return Ok(identifiers);
     }
