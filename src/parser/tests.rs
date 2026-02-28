@@ -6,6 +6,36 @@ use super::precedence::{Precedence};
 use super::Parser;
 use super::errors::ParseError;
 
+fn new_identifier(value: &str) -> Expression {
+    Expression::Ident(Identifier {
+        token: Token {
+            token_type: TokenType::Ident,
+            literal: value.to_string(),
+        },
+        value: value.to_string(),
+    })
+}
+
+fn new_integer(value: i64) -> Expression {
+    Expression::IntegerLiteral {
+        token: Token {
+            token_type: TokenType::Int,
+            literal: value.to_string(),
+        },
+        value: value,
+    }
+}
+
+fn new_boolean(value: bool) -> Expression {
+    Expression::Boolean {
+        token: Token {
+            token_type: if value { TokenType:: True } else { TokenType::False },
+            literal: value.to_string(),
+        },
+        value: value,
+    }
+}
+
 fn assert_identifier_expression(expr: &Expression, expected: &str) {
     match expr {
         Expression::Ident(ident) => {
@@ -354,29 +384,11 @@ fn test_parsing_prefix_expressions() {
          value: 5,
     };
 
-    let fifteen = Expression::IntegerLiteral {
-         token: Token {
-            token_type: TokenType::Int,
-            literal: "15".to_string(),
-         }, 
-         value: 15,
-    };
+    let fifteen = new_integer(15);
 
-    let bool_true = Expression::Boolean {
-         token: Token {
-            token_type: TokenType::True,
-            literal: "true".to_string(),
-         }, 
-         value: true,
-    };
+    let bool_true = new_boolean(true);
 
-    let bool_false = Expression::Boolean {
-         token: Token {
-            token_type: TokenType::False,
-            literal: "false".to_string(),
-         }, 
-         value: false,
-    };
+    let bool_false = new_boolean(false);
 
     let tests = vec![
         ("!5;", "!", &five),
@@ -416,29 +428,11 @@ fn test_parsing_prefix_expressions() {
 
 #[test]
 fn test_parsing_infix_expressions() {
-    let five = Expression::IntegerLiteral {
-         token: Token {
-            token_type: TokenType::Int,
-            literal: "5".to_string(),
-         }, 
-         value: 5,
-    };
+    let five = new_integer(5);
 
-    let bool_true = Expression::Boolean {
-         token: Token {
-            token_type: TokenType::True,
-            literal: "true".to_string(),
-         }, 
-         value: true,
-    };
+    let bool_true = new_boolean(true);
 
-    let bool_false = Expression::Boolean {
-         token: Token {
-            token_type: TokenType::False,
-            literal: "false".to_string(),
-         }, 
-         value: false,
-    };
+    let bool_false = new_boolean(false);
 
     let tests = vec![
         ("5 + 5;", &five, "+", &five),
@@ -555,21 +549,9 @@ fn test_if_expression() {
 
     assert_infix_expression(
         condition,
-        &Expression::Ident(Identifier {
-            token: Token {
-                token_type: TokenType::Ident,
-                literal: "x".to_string(),
-            },
-            value: "x".to_string(),
-        }), 
+        &new_identifier("x"), 
         "<".to_string(), 
-        &Expression::Ident(Identifier {
-            token: Token {
-                token_type: TokenType::Ident,
-                literal: "y".to_string(),
-            },
-            value: "y".to_string(),
-        }),
+        &new_identifier("y"),
     );
 
     assert_eq!(
@@ -636,21 +618,9 @@ fn test_function_literal_parsing() {
                 } => {
                     assert_infix_expression(
                         &*expression, 
-                        &Expression::Ident(Identifier {
-                             token: Token { 
-                                token_type: TokenType::Ident, 
-                                literal: "x".to_string() 
-                            }, 
-                             value: "x".to_string(),
-                        }), 
+                        &new_identifier("x"), 
                         "+".to_string(), 
-                        &Expression::Ident(Identifier {
-                             token: Token { 
-                                token_type: TokenType::Ident, 
-                                literal: "y".to_string() 
-                            }, 
-                             value: "y".to_string(),
-                        }),
+                        &new_identifier("y"),
                     );
                 }
 
@@ -738,39 +708,15 @@ fn test_call_expression_parsing() {
             assert_integer_literal(&arguments[0], 1);
             assert_infix_expression(
                 &arguments[1], 
-                &Expression::IntegerLiteral {
-                    token: Token { 
-                        token_type: TokenType::Int, 
-                        literal: "2".to_string() 
-                    }, 
-                    value: 2,
-                },
+                &new_integer(2),
                 "*".to_string(),
-                &Expression::IntegerLiteral {
-                    token: Token { 
-                        token_type: TokenType::Int,
-                        literal: "3".to_string() 
-                    },
-                    value: 3,
-                }
+                &new_integer(3)
             );
             assert_infix_expression(
                 &arguments[2], 
-                &Expression::IntegerLiteral {
-                    token: Token { 
-                        token_type: TokenType::Int,
-                        literal: "4".to_string() 
-                    },
-                    value: 4,
-                },
+                &new_integer(4),
                 "+".to_string(),
-                &Expression::IntegerLiteral {
-                    token: Token { 
-                        token_type: TokenType::Int,
-                        literal: "5".to_string() 
-                    },
-                    value: 5,
-                }
+                &new_integer(5)
             );
         }
 
