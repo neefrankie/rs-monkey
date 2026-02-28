@@ -63,25 +63,30 @@ impl fmt::Display for Expression {
             Expression::Ident(
                 identifier
             ) => write!(f, "{}", identifier),
+
             Expression::IntegerLiteral {
                 token, 
                 ..
             } => write!(f, "{}", token.literal),
+
+            Expression::Boolean {
+                token,
+                ..
+            } => write!(f, "{}", token.literal),
+
             Expression::Prefix{
                 operator, 
                 right,
                 ..
             } => write!(f, "({}{})", operator, right),
+            
             Expression::Infix {
                 left,
                 operator,
                 right,
                 ..
             } => write!(f, "({} {} {})", left, operator, right),
-            Expression::Boolean {
-                token,
-                ..
-            } => write!(f, "{}", token.literal),
+            
 
             Expression::If {
                 condition,

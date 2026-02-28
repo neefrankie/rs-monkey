@@ -62,10 +62,15 @@ pub enum Expression {
         right: Box<Expression>, // y
     },
     If {
+        // if (x > y) {
+        //     return x;
+        // } else {
+        //     return y;
+        // }
         token: token::Token, // if
-        condition: Box<Expression>,
-        consequence: BlockStatement,
-        alternative: Option<BlockStatement>,
+        condition: Box<Expression>, // x > y
+        consequence: BlockStatement, // { return x; }
+        alternative: Option<BlockStatement>, // { return y; }
     },
     FunctionLiteral {
         token: token::Token,
