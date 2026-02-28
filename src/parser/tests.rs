@@ -1,131 +1,154 @@
 use crate::token::{Token, TokenType};
-use crate::ast::{Expression, Node, Program, Statement};
+use crate::ast::{Expression, Identifier, Node, Program, Statement};
 use crate::lexer::{Lexer};
 
 use super::precedence::{Precedence};
 use super::Parser;
 use super::errors::ParseError;
 
-fn test_integer_literal(il: &Expression, expected_value: i64) -> bool {
+fn assert_identifier(expr: &Expression, expected: &str) {
+    match expr {
+        Expression::Ident(ident) => {
+            assert_eq!(
+                ident.value,
+                expected,
+                "Identifier.value not {}. got={}",
+                expected,
+                ident.value
+            );
 
-    let Some(integ) = il.as_integral() else {
-        eprintln!(
-            "il not Expression::IntegerLiteral. got={}",
-            il
-        );
-        return false;
-    };
+            assert_eq!(
+                ident.token_literal(),
+                expected,
+                "Identifier.token_literal not {}. got={}",
+                expected,
+                ident.token_literal()
+            );
 
-    assert_eq!(
-        integ,
-        expected_value,
-        "IntegralLiteral.value is not {}. got={}",
-        expected_value,
-        integ,
-    );
-    assert_eq!(
-        il.token_literal(),
-        integ.to_string(),
-        "iteg.token_literal is not {}. got={}",
-        integ,
-        il.token_literal()
-    );
-
-    return true;
+        }
+        _ => panic!("Expected Identifier, got {:?}", expr),
+    }
 }
 
-fn test_boolean_literal(exp: &Expression, value: bool) -> bool {
-    let Some(bo) = exp.as_boolean() else {
-        eprintln!(
-            "exp not Expression::Boolean. got={}",
-            exp
-        );
-        return false;
-    };
+fn assert_integer_literal(expr: &Expression, expected: i64) {
+    match expr {
+        Expression::IntegerLiteral { value, ..} => {
+            assert_eq!(
+                *value,
+                expected,
+                "IntegralLiteral.value is not {}. got={}",
+                expected,
+                *value,
+            );
+            assert_eq!(
+                expr.token_literal(),
+                expected.to_string(),
+                "expr.token_literal is not {}. got={}",
+                expected,
+                expr.token_literal()
+            );
+        }
 
-    assert_eq!(
-        bo,
-        value,
-        "Boolean.value is not {}. got={}",
-        value,
-        bo,
-    );
-    assert_eq!(
-        exp.token_literal(),
-        bo.to_string(),
-        "bo.token_literal not {}. got={}",
-        value,
-        exp.token_literal()
-    );
-
-    return true;
+        _ => panic!("Expected IntegerLiteral, got {}", expr),
+    }
 }
 
-fn test_identifier(exp: &Expression, value: String) -> bool {
-    let Some(ident) = exp.as_identifier() else {
-        eprintln!("exp is not an Expression::Identifier. got {}", exp);
-        return false;
-    };
-        
-    assert_eq!(
-        ident.value,
-        "foobar",
-        "Identifier.value not {}. got={}",
-        value,
-        ident.value
-    );
+fn assert_boolean(expr: &Expression, expected: bool) {
+    match expr {
+        Expression::Boolean { value, ..} => {
+            assert_eq!(
+                *value,
+                expected,
+                "Boolean.value is not {}. got={}",
+                expected,
+                *value,
+            );
+            assert_eq!(
+                expr.token_literal(),
+                expected.to_string(),
+                "expr.token_literal is not {}. got={}",
+                expected,
+                expr.token_literal()
+            )
+        }
+        _ => panic!("Expected Boolean, got {}", expr),
+    }
 
-    assert_eq!(
-        ident.token_literal(),
-        value,
-        "Identifier.token_literal not {}. got={}",
-        value,
-        ident.token_literal()
-    );
-
-    return true;
 }
 
-fn test_literal_expression(exp: &Expression, expected: &Expression) -> bool {
+fn assert_literal_expression(expr: &Expression, expected: &Expression) {
     match expected {
-        Expression::IntegerLiteral { value, .. } => {
-            test_integer_literal(exp, *value)
-        }
         Expression::Ident(identifier) => {
-            test_identifier(exp, identifier.value.clone())
+            assert_identifier(
+                expr, 
+                &identifier.value)
         }
+        Expression::IntegerLiteral { value, .. } => {
+            assert_integer_literal(
+                expr, 
+                *value
+            );
+        }
+        
         Expression::Boolean { value , ..} => {
-            test_boolean_literal(exp, *value)
-
+            assert_boolean(
+                expr, 
+                *value
+            );
         }
         _ => {
-            eprintln!("type of exp not handled. got {}", exp);
-            false
+            panic!("type of exp not handled. got {}", expr);
         }
     }
 }
 
-fn test_infix_expression(
+fn assert_prefix_expression(
+    expr: &Expression, 
+    expected_operator: &str, 
+    expected_right: &Expression
+) {
+    match expr {
+        Expression::Prefix { 
+            operator,
+            right,
+            ..
+        } => {
+            assert_eq!(
+                *operator,
+                expected_operator,
+                "exp.Operator is not {}. got={}",
+                expected_operator,
+                operator
+            );
+
+            assert_literal_expression(
+                right, 
+                expected_right
+            );
+        }
+
+        _ => panic!("Expected Prefix expression. got {}", expr),
+    }
+}
+
+fn assert_infix_expression(
     exp: &Expression, 
     left: &Expression, 
     operator: String, 
     right: &Expression
-) -> bool {
+) {
     let Some((
         infix_left, 
         infix_operator, 
         infix_right
     )) = exp.as_infix() else {
-        eprintln!("expression is not an Expression::Infix. got {}", exp);
-        return false;
+        panic!("expression is not an Expression::Infix. got {}", exp);
     };
 
-    if !test_literal_expression(
+    assert_literal_expression(
         infix_left, 
         left
-    ) {
-        return false;
-    }
+    );
     
     assert_eq!(
         infix_operator,
@@ -135,44 +158,45 @@ fn test_infix_expression(
         infix_operator
     );
 
-    if !test_literal_expression(
+    assert_literal_expression(
         infix_right,
         right
-    ) {
-        return false;
-    };
-
-    return true;
+    );
 }
 
-fn test_let_statement(stmt: &Statement, expected_name: &str) -> bool {
-    if stmt.token_literal() != "let".to_string() {
-        println!("Expected 'let', got '{}'", stmt.token_literal());
-        return false;
+fn assert_let_statement(stmt: &Statement, expected_name: &str) {
+
+    assert_eq!(
+        stmt.token_literal(),
+        "let",
+        "stmt.token_literal() is not 'let'. got={}",
+        stmt.token_literal(),
+    );
+
+    match stmt {
+        Statement::Let { 
+            name, 
+            ..
+        } => {
+            assert_eq!(
+                name.value,
+                expected_name,
+                "Statement.Let.name.value not '{}'. got '{}'",
+                expected_name,
+                name.value
+            );
+
+            assert_eq!(
+                name.token_literal(),
+                expected_name,
+                "Statement.Let.name.token_literal() not '{}'. got '{}'",
+                expected_name,
+                name.token_literal()
+            );
+        }
+
+        _ => panic!("stmt is not a LetStatement"),
     }
-
-    let (let_name, _) = stmt.as_let()
-        .expect("stmt is not a LetStatement");
-
-    if let_name.value != expected_name {
-        eprintln!(
-            "Statement.Let.name.value not '{}'. got '{}'", 
-            expected_name,
-            let_name.value
-        );
-        return false;
-    }
-
-    if let_name.token_literal() != expected_name {
-        eprintln!(
-            "Statement.Let.name.token_literal() not '{}', got '{}'", 
-            expected_name,
-            let_name.token_literal()
-        );
-        return false;
-    }
-
-    true
 }
 
 fn assert_no_parse_errors(result: Result<Program, Vec<ParseError>>) -> Program {
@@ -238,16 +262,11 @@ let foobar = 838383;
         "foobar",
     ];
 
-    for (i, &expected_identifier) in tests.iter().enumerate() {
+    for (i, &expected_name) in tests.iter().enumerate() {
         // &* 先解引用得到 dyn Statement，再取引用得到 &dyn Statement
         let stmt = &programm.statements[i];
 
-        assert!(
-            test_let_statement(stmt, expected_identifier),
-            "Test failed for statement {} with identifier {}",
-            i,
-            expected_identifier
-        )
+        assert_let_statement(stmt, expected_name);
     }
 }
 
@@ -261,9 +280,12 @@ return 993 322;
     let mut parser = Parser::new(lex);
     let program = assert_no_parse_errors(parser.parse_program());
     
-    assert_eq!(program.statements.len(), 3,
+    assert_eq!(
+        program.statements.len(),
+        3,
         "program.statements does not contain 3 statements. got={}",
-        program.statements.len());
+        program.statements.len()
+    );
 
     for stmt in program.statements {
         assert_eq!(
@@ -294,7 +316,7 @@ fn test_identifier_expression() {
         .as_expression()
         .expect("program.statements[0] is not an ExpressionStatement");
 
-    test_identifier(expr, "foobar".to_string());
+    assert_identifier(expr, "foobar");
 }
 
 
@@ -316,24 +338,7 @@ fn test_integer_literal_expression() {
         .as_expression()
         .expect("program.statements[0] is not ExpressionStatement");
 
-    let literal_value = expr.as_integral()
-        .expect("expr is not IntegerLiteral");
-
-    assert_eq!(
-        literal_value,
-        5,
-        "IntegralLiteral.value is not {}, got {}",
-        5,
-        literal_value
-    );
-
-    assert_eq!(
-        expr.token_literal(),
-        "5",
-        "IntegralLiteral.token_literal not {}. got={}",
-        "5",
-        expr.token_literal()
-    );
+    assert_integer_literal(expr, 5);
 }
 
 #[test]
@@ -377,7 +382,11 @@ fn test_parsing_prefix_expressions() {
         ("!false;", "!", &bool_false),
     ];
 
-    for (input, expected_operator, expected_value) in tests {
+    for (
+        input, 
+        expected_operator, 
+        expected_right
+    ) in tests {
         let lex = Lexer::new(input.to_string());
         let mut parser = Parser::new(lex);
         let program = assert_no_parse_errors(parser.parse_program());
@@ -393,20 +402,10 @@ fn test_parsing_prefix_expressions() {
             .as_expression()
             .expect("program.statements[0] is not ExpressionStatement");
 
-        let (prefix_op, prefix_right) = expr.as_prefix()
-            .expect("expr is not Expression::Prefix");
-        
-        assert_eq!(
-            prefix_op,
-            expected_operator,
-            "exp.Operator is not {}. got={}",
-            expected_operator,
-            prefix_op
-        );
-
-        test_literal_expression(
-            prefix_right, 
-            expected_value
+        assert_prefix_expression(
+            expr, 
+            expected_operator, 
+            expected_right
         );
     }
 }
@@ -470,7 +469,7 @@ fn test_parsing_infix_expressions() {
             .as_expression()
             .expect("statement is not an ExpressionStatement");
 
-        test_infix_expression(
+        assert_infix_expression(
             expr, 
             left_value, 
             expected_operator.to_string(), 
@@ -499,6 +498,11 @@ fn test_operator_precedence_parsing() {
         ("false", "false"),
         ("3 > 5 == false", "((3 > 5) == false)"),
         ("3 < 5 == true", "((3 < 5) == true)"),
+        ("1 + (2 + 3) + 4", "((1 + (2 + 3)) + 4)"),
+        ("(5 + 5) * 2", "((5 + 5) * 2)"),
+        ("2 / (5 + 5)", "(2 / (5 + 5))"),
+        ("-(5 + 5)", "(-(5 + 5))"),
+        ("!(true == true)", "(!(true == true))"),
     ];
 
     for (input, expected) in tests {
@@ -515,4 +519,64 @@ fn test_operator_precedence_parsing() {
             actual
         );
     }
+}
+
+#[test]
+fn test_if_expression() {
+    let input = "if (x < y) { x }";
+    let lex = Lexer::new(input.to_string());
+    let mut parser = Parser::new(lex);
+    let program = assert_no_parse_errors(parser.parse_program());
+
+    assert_eq!(
+        program.statements.len(),
+        1,
+        "program.statements does not contain 1 statements. got={}",
+        program.statements.len()
+    );
+    // program.statements[0].expression
+    let expr = program.statements[0]
+        .as_expression()
+        .expect("program.statements[0] is not ExpressionStatement");
+
+    let (
+        condition, 
+        consequence, 
+        alternative
+    ) = expr.as_if()
+        .expect("expr is not an IfExpression");
+
+    assert_infix_expression(
+        condition,
+        &Expression::Ident(Identifier {
+            token: Token {
+                token_type: TokenType::Ident,
+                literal: "x".to_string(),
+            },
+            value: "x".to_string(),
+        }), 
+        "<".to_string(), 
+        &Expression::Ident(Identifier {
+            token: Token {
+                token_type: TokenType::Ident,
+                literal: "y".to_string(),
+            },
+            value: "y".to_string(),
+        }),
+    );
+
+    assert_eq!(
+        consequence.statements.len(),
+        1,
+        "consequence.statements does not contain 1 statement. got={}",
+        consequence.statements.len()
+    );
+
+    let ident = consequence.statements[0]
+        .as_expression()
+        .expect("consequence.statements[0] is not ExpressionStatement");
+
+    assert_identifier(ident, "x");
+
+    assert!(alternative.is_none());
 }
