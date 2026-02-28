@@ -29,7 +29,7 @@ impl fmt::Display for Statement {
                 token,
                 name,
                 value,
-            } => write!(f, "{} {} = {}", token.literal, name, value),
+            } => write!(f, "{} {} = {};", token.literal, name, value),
             Statement::Return {
                 token,
                 return_value,
@@ -37,8 +37,6 @@ impl fmt::Display for Statement {
                 write!(f, "{}", token.literal)?;
                 if let Some(value) = return_value {
                     write!(f, " {}", value)?;
-                } else {
-                    f.write_str("<missing_value>")?;
                 }
                 write!(f, ";")
             },
