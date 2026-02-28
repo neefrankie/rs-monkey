@@ -1,4 +1,4 @@
-use crate::ast::{self, Statement};
+use crate::ast::{self, Statement, BlockStatement};
 use crate::token::{TokenType};
 
 use super::errors::ParseError;
@@ -92,6 +92,27 @@ impl Parser {
         return Ok(Statement::Expression {
             token: current_token,
             expression: Box::new(expr),
+        });
+    }
+
+    pub(super) fn parse_block_statement(&mut self) -> Result<BlockStatement, ParseError> {
+        // curent token point to {.
+        let token = self.current_token.clone();
+        let mut statements: Vec<Statement> = Vec::new();
+
+        self.next_token();
+        // 反复调用 parse_statement，知道遇见右大括号 }
+        // 或 TokenType::Eof，前者表示到了块语句的末尾，
+        // 后者表示没有要解析的词法单元。
+        while !self.current_token_is(TokenType::RBrace) && !self.current_token_is(TokenType::Eof) {
+            let statement = self.parse_statement()?;
+            statements.push(statement);
+            self.next_token();
+        }
+
+        return Ok(BlockStatement {
+            token,
+            statements,
         });
     }
 }
