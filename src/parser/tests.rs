@@ -6,28 +6,31 @@ use super::precedence::{Precedence};
 use super::Parser;
 use super::errors::ParseError;
 
-fn assert_identifier(expr: &Expression, expected: &str) {
+fn assert_identifier_expression(expr: &Expression, expected: &str) {
     match expr {
         Expression::Ident(ident) => {
-            assert_eq!(
-                ident.value,
-                expected,
-                "Identifier.value not {}. got={}",
-                expected,
-                ident.value
-            );
-
-            assert_eq!(
-                ident.token_literal(),
-                expected,
-                "Identifier.token_literal not {}. got={}",
-                expected,
-                ident.token_literal()
-            );
-
+            assert_identifier(ident, expected);
         }
         _ => panic!("Expected Identifier, got {:?}", expr),
     }
+}
+
+fn assert_identifier(ident: &Identifier, expected: &str) {
+    assert_eq!(
+        ident.value,
+        expected,
+        "Identifier.value not {}. got={}",
+        expected,
+        ident.value
+    );
+
+    assert_eq!(
+        ident.token_literal(),
+        expected,
+        "Identifier.token_literal not {}. got={}",
+        expected,
+        ident.token_literal()
+    );
 }
 
 fn assert_integer_literal(expr: &Expression, expected: i64) {
@@ -79,7 +82,7 @@ fn assert_boolean(expr: &Expression, expected: bool) {
 fn assert_literal_expression(expr: &Expression, expected: &Expression) {
     match expected {
         Expression::Ident(identifier) => {
-            assert_identifier(
+            assert_identifier_expression(
                 expr, 
                 &identifier.value)
         }
@@ -316,7 +319,7 @@ fn test_identifier_expression() {
         .as_expression()
         .expect("program.statements[0] is not an ExpressionStatement");
 
-    assert_identifier(expr, "foobar");
+    assert_identifier_expression(expr, "foobar");
 }
 
 
@@ -503,6 +506,10 @@ fn test_operator_precedence_parsing() {
         ("2 / (5 + 5)", "(2 / (5 + 5))"),
         ("-(5 + 5)", "(-(5 + 5))"),
         ("!(true == true)", "(!(true == true))"),
+        ("a + add(b * c) + d", "(a + add((b * c)) + d)"),
+        ("add(a, b, 1, 2 * 3, 4 + 5", "add(6, 7 * 8)"),
+        ("add(a + b + c * d / f + g", "add((((a + b) + (c * d) / f)) + g)")
+
     ];
 
     for (input, expected) in tests {
@@ -576,7 +583,197 @@ fn test_if_expression() {
         .as_expression()
         .expect("consequence.statements[0] is not ExpressionStatement");
 
-    assert_identifier(ident, "x");
+    assert_identifier_expression(ident, "x");
 
     assert!(alternative.is_none());
+}
+
+#[test]
+fn test_function_literal_parsing() {
+    let input = "fn(x, y) { x + y; }";
+
+    let lex = Lexer::new(input.to_string());
+    let mut parser = Parser::new(lex);
+    let program = assert_no_parse_errors(parser.parse_program());
+    assert_eq!(
+        program.statements.len(),
+        1,
+        "program.statements does not contain 1 statement. got={}",
+        program.statements.len()
+    );
+
+    let expr = program.statements[0]
+        .as_expression()
+        .expect("program.statements[0] is not ExpressionStatement");
+
+    match expr {
+        Expression::FunctionLiteral {
+            parameters,
+            body,
+            ..
+        } => {
+            assert_eq!(
+                parameters.len(),
+                2,
+                "function literal parameters wrong. want 2, got={}",
+                parameters.len()
+            );
+
+            assert_identifier(&parameters[0], "x");
+            assert_identifier(&parameters[1], "y");
+
+            assert_eq!(
+                body.statements.len(),
+                1,
+                "function.Body.statements does not contain 1 statement. got={}",
+                body.statements.len(),
+            );
+
+            match &body.statements[0] {
+                Statement::Expression { 
+                    expression,
+                    ..
+                } => {
+                    assert_infix_expression(
+                        &*expression, 
+                        &Expression::Ident(Identifier {
+                             token: Token { 
+                                token_type: TokenType::Ident, 
+                                literal: "x".to_string() 
+                            }, 
+                             value: "x".to_string(),
+                        }), 
+                        "+".to_string(), 
+                        &Expression::Ident(Identifier {
+                             token: Token { 
+                                token_type: TokenType::Ident, 
+                                literal: "y".to_string() 
+                            }, 
+                             value: "y".to_string(),
+                        }),
+                    );
+                }
+
+                _ => panic!("function body stmt is not ExpressionStatement. got={}", body.statements[0]),
+            }
+        }
+
+        _ => panic!("stmt.Expression is not a FunctionLiteral. got={}", expr),
+    }
+}
+
+#[test]
+fn test_function_parameter_parsing() {
+    let tests = vec![
+        ("fn() {};", vec![]),
+        ("fn(x) {};", vec!["x"]),
+        ("fn(x, y, z) {};", vec!["x", "y", "z"]),
+    ];
+
+    for (input, expected) in tests {
+        let lex = Lexer::new(input.to_string());
+        let mut parser = Parser::new(lex);
+        let program = assert_no_parse_errors(parser.parse_program());
+
+        let expr = program.statements[0]
+            .as_expression()
+            .expect("program.statements[0] is not ExpressionStatement");
+
+        match expr {
+            Expression::FunctionLiteral {
+                parameters,
+                ..
+            } => {
+                assert_eq!(
+                    parameters.len(),
+                    expected.len(),
+                    "length parameters wrong. want {}, got={}",
+                    expected.len(),
+                    parameters.len()
+                );
+
+                for (i, ident) in parameters.iter().enumerate() {
+                    assert_identifier(ident, expected[i]);
+                }
+            }
+
+            _ => panic!("stmt.Expression is not a FunctionLiteral. got={}", expr),
+        }
+    }
+}
+
+#[test]
+fn test_call_expression_parsing() {
+    let input = "add(1, 2 * 3, 4 + 5);";
+    let lex = Lexer::new(input.to_string());
+    let mut parser = Parser::new(lex);
+    let program = assert_no_parse_errors(parser.parse_program());
+
+    assert_eq!(
+        program.statements.len(),
+        1,
+        "program.statements does not contain 1 statement. got={}",
+        program.statements.len()
+    );
+
+    let expr = program.statements[0]
+        .as_expression()
+        .expect("program.statements[0] is not ExpressionStatement");
+
+    match expr {
+        Expression::Call {
+            function,
+            arguments,
+            ..
+        } => {
+            assert_identifier_expression(function, "add");
+
+            assert_eq!(
+                arguments.len(),
+                3,
+                "wrong length of arguments. got={}",
+                arguments.len()
+            );
+
+            assert_integer_literal(&arguments[0], 1);
+            assert_infix_expression(
+                &arguments[1], 
+                &Expression::IntegerLiteral {
+                    token: Token { 
+                        token_type: TokenType::Int, 
+                        literal: "2".to_string() 
+                    }, 
+                    value: 2,
+                },
+                "*".to_string(),
+                &Expression::IntegerLiteral {
+                    token: Token { 
+                        token_type: TokenType::Int,
+                        literal: "3".to_string() 
+                    },
+                    value: 3,
+                }
+            );
+            assert_infix_expression(
+                &arguments[2], 
+                &Expression::IntegerLiteral {
+                    token: Token { 
+                        token_type: TokenType::Int,
+                        literal: "4".to_string() 
+                    },
+                    value: 4,
+                },
+                "+".to_string(),
+                &Expression::IntegerLiteral {
+                    token: Token { 
+                        token_type: TokenType::Int,
+                        literal: "5".to_string() 
+                    },
+                    value: 5,
+                }
+            );
+        }
+
+        _ => panic!("stmt.Expression is not a CallExpression. got={}", expr),
+    }
 }
