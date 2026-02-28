@@ -81,6 +81,13 @@ fn new_function_token() -> Token {
     }
 }
 
+fn new_return_token() -> Token {
+    Token {
+        token_type: TokenType::Return,
+        literal: "return".to_string(),
+    }
+}
+
 fn new_identifier(value: &str) -> Identifier {
     Identifier {
         token: new_ident_token(value),
@@ -234,6 +241,49 @@ fn test_if_string() {
 }
 
 #[test]
+fn test_function_string() {
+    let function = Expression::FunctionLiteral {
+        token: new_function_token(),
+        parameters: vec![
+            new_identifier("x"),
+            new_identifier("y")
+        ],
+        body: new_block_stmt(vec![
+            Statement::Expression {
+                token: new_ident_token("x"),
+                expression: Box::new(
+                    new_ident_expr("x")
+                )
+            }
+        ])
+    };
+
+    assert_eq!(
+        format!("{}", function),
+        "fn(x, y) { x }"
+    );
+}
+
+#[test]
+fn test_call_string() {
+    let call = Expression::Call {
+        token: new_ident_token("add"),
+        function: Box::new(
+            new_ident_expr("add")
+        ),
+        arguments: vec![
+            new_ident_expr("x"),
+            new_ident_expr("y")
+        ]
+    };
+
+    assert_eq!(
+        format!("{}", call),
+        "add(x, y)"
+    )
+}
+
+#[test]
 fn test_let_string() {
     let stmt = new_let_stmt(
         "myVar",
@@ -243,6 +293,36 @@ fn test_let_string() {
     assert_eq!(
         format!("{}", stmt),
         "let myVar = anotherVar;"
+    );
+}
+
+#[test]
+fn test_return_string() {
+    let stmt = Statement::Return {
+        token: new_return_token(),
+        return_value: Some(Box::new(
+            new_ident_expr("x")
+        ))
+    };
+
+    assert_eq!(
+        format!("{}", stmt),
+        "return x;"
+    );
+}
+
+#[test]
+fn test_expression_stmt_string() {
+    let stmt = Statement::Expression {
+        token: new_ident_token("x"),
+        expression: Box::new(
+            new_ident_expr("x")
+        )
+    };
+
+    assert_eq!(
+        format!("{}", stmt),
+        "x"
     );
 }
 
