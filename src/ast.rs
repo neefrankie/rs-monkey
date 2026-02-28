@@ -1,6 +1,5 @@
 use crate::token;
 
-
 mod statements;
 mod expressions;
 mod program;
@@ -14,6 +13,7 @@ pub struct Identifier {
     pub token: token::Token,
     pub value: String, // token.literal
 }
+
 
 #[derive(Debug)]
 pub enum Statement {
@@ -55,13 +55,14 @@ pub enum Expression {
         right: Box<Expression>,
     },
     Infix {
-        token: token::Token,
-        left: Box<Expression>,
-        operator: String,
-        right: Box<Expression>,
+        // x > y
+        token: token::Token, // >
+        left: Box<Expression>, // x
+        operator: String, // >
+        right: Box<Expression>, // y
     },
     If {
-        token: token::Token,
+        token: token::Token, // if
         condition: Box<Expression>,
         consequence: BlockStatement,
         alternative: Option<BlockStatement>,
