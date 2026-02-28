@@ -133,7 +133,7 @@ impl fmt::Display for Expression {
                     .join(", ");
                 write!(
                     f, 
-                    "{} ({})", 
+                    "{}({})", 
                     function, 
                     args
                 )
