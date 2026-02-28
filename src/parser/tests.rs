@@ -6,30 +6,143 @@ use super::precedence::{Precedence};
 use super::Parser;
 use super::errors::ParseError;
 
-#[test]
-fn test_precedence() {
-    assert!(Precedence::Lowest < Precedence::Equal);
-    assert!(Precedence::Equal < Precedence::LessGreater);
-    assert!(Precedence::LessGreater < Precedence::Sum);
-    assert!(Precedence::Sum < Precedence::Product);
-    assert!(Precedence::Product < Precedence::Prefix);
-    assert!(Precedence::Prefix < Precedence::Call);
+fn test_integer_literal(il: &Expression, expected_value: i64) -> bool {
+
+    let Some(integ) = il.as_integral() else {
+        eprintln!(
+            "il not Expression::IntegerLiteral. got={}",
+            il
+        );
+        return false;
+    };
+
+    assert_eq!(
+        integ,
+        expected_value,
+        "IntegralLiteral.value is not {}. got={}",
+        expected_value,
+        integ,
+    );
+    assert_eq!(
+        il.token_literal(),
+        integ.to_string(),
+        "iteg.token_literal is not {}. got={}",
+        integ,
+        il.token_literal()
+    );
+
+    return true;
 }
 
-#[test]
-fn test_precedence_from_token() {
+fn test_boolean_literal(exp: &Expression, value: bool) -> bool {
+    let Some(bo) = exp.as_boolean() else {
+        eprintln!(
+            "exp not Expression::Boolean. got={}",
+            exp
+        );
+        return false;
+    };
+
     assert_eq!(
-        Precedence::from_token(TokenType::Plus),
-        Some(Precedence::Sum)
+        bo,
+        value,
+        "Boolean.value is not {}. got={}",
+        value,
+        bo,
     );
     assert_eq!(
-        Precedence::from_token(TokenType::Asterisk), 
-        Some(Precedence::Product)
+        exp.token_literal(),
+        bo.to_string(),
+        "bo.token_literal not {}. got={}",
+        value,
+        exp.token_literal()
     );
+
+    return true;
+}
+
+fn test_identifier(exp: &Expression, value: String) -> bool {
+    let Some(ident) = exp.as_identifier() else {
+        eprintln!("exp is not an Expression::Identifier. got {}", exp);
+        return false;
+    };
+        
     assert_eq!(
-        Precedence::from_token(TokenType::LBrace),
-        None
+        ident.value,
+        "foobar",
+        "Identifier.value not {}. got={}",
+        value,
+        ident.value
     );
+
+    assert_eq!(
+        ident.token_literal(),
+        value,
+        "Identifier.token_literal not {}. got={}",
+        value,
+        ident.token_literal()
+    );
+
+    return true;
+}
+
+fn test_literal_expression(exp: &Expression, expected: &Expression) -> bool {
+    match expected {
+        Expression::IntegerLiteral { value, .. } => {
+            test_integer_literal(exp, *value)
+        }
+        Expression::Ident(identifier) => {
+            test_identifier(exp, identifier.value.clone())
+        }
+        Expression::Boolean { value , ..} => {
+            test_boolean_literal(exp, *value)
+
+        }
+        _ => {
+            eprintln!("type of exp not handled. got {}", exp);
+            false
+        }
+    }
+}
+
+fn test_infix_expression(
+    exp: &Expression, 
+    left: &Expression, 
+    operator: String, 
+    right: &Expression
+) -> bool {
+    let Some((
+        infix_left, 
+        infix_operator, 
+        infix_right
+    )) = exp.as_infix() else {
+        eprintln!("expression is not an Expression::Infix. got {}", exp);
+        return false;
+    };
+
+    if !test_literal_expression(
+        infix_left, 
+        left
+    ) {
+        return false;
+    }
+    
+    assert_eq!(
+        infix_operator,
+        operator,
+        "exp.operator is not {}. got={}",
+        operator,
+        infix_operator
+    );
+
+    if !test_literal_expression(
+        infix_right,
+        right
+    ) {
+        return false;
+    };
+
+    return true;
 }
 
 fn test_let_statement(stmt: &Statement, expected_name: &str) -> bool {
@@ -74,6 +187,34 @@ fn assert_no_parse_errors(result: Result<Program, Vec<ParseError>>) -> Program {
         },
     }
 }
+
+
+#[test]
+fn test_precedence() {
+    assert!(Precedence::Lowest < Precedence::Equal);
+    assert!(Precedence::Equal < Precedence::LessGreater);
+    assert!(Precedence::LessGreater < Precedence::Sum);
+    assert!(Precedence::Sum < Precedence::Product);
+    assert!(Precedence::Product < Precedence::Prefix);
+    assert!(Precedence::Prefix < Precedence::Call);
+}
+
+#[test]
+fn test_precedence_from_token() {
+    assert_eq!(
+        Precedence::from_token(TokenType::Plus),
+        Some(Precedence::Sum)
+    );
+    assert_eq!(
+        Precedence::from_token(TokenType::Asterisk), 
+        Some(Precedence::Product)
+    );
+    assert_eq!(
+        Precedence::from_token(TokenType::LBrace),
+        None
+    );
+}
+
 
 #[test]
 fn test_let_statements() {
@@ -156,30 +297,6 @@ fn test_identifier_expression() {
     test_identifier(expr, "foobar".to_string());
 }
 
-fn test_identifier(exp: &Expression, value: String) -> bool {
-    let Some(ident) = exp.as_identifier() else {
-        eprintln!("exp is not an Expression::Identifier. got {}", exp);
-        return false;
-    };
-        
-    assert_eq!(
-        ident.value,
-        "foobar",
-        "Identifier.value not {}. got={}",
-        value,
-        ident.value
-    );
-
-    assert_eq!(
-        ident.token_literal(),
-        value,
-        "Identifier.token_literal not {}. got={}",
-        value,
-        ident.token_literal()
-    );
-
-    return true;
-}
 
 #[test]
 fn test_integer_literal_expression() {
@@ -221,9 +338,43 @@ fn test_integer_literal_expression() {
 
 #[test]
 fn test_parsing_prefix_expressions() {
+    let five = Expression::IntegerLiteral {
+         token: Token {
+            token_type: TokenType::Int,
+            literal: "5".to_string(),
+         }, 
+         value: 5,
+    };
+
+    let fifteen = Expression::IntegerLiteral {
+         token: Token {
+            token_type: TokenType::Int,
+            literal: "15".to_string(),
+         }, 
+         value: 15,
+    };
+
+    let bool_true = Expression::Boolean {
+         token: Token {
+            token_type: TokenType::True,
+            literal: "true".to_string(),
+         }, 
+         value: true,
+    };
+
+    let bool_false = Expression::Boolean {
+         token: Token {
+            token_type: TokenType::False,
+            literal: "false".to_string(),
+         }, 
+         value: false,
+    };
+
     let tests = vec![
-        ("!5;", "!", 5),
-        ("-15;", "-", 15),
+        ("!5;", "!", &five),
+        ("-15;", "-", &fifteen),
+        ("!true;", "!", &bool_true),
+        ("!false;", "!", &bool_false),
     ];
 
     for (input, expected_operator, expected_value) in tests {
@@ -253,86 +404,13 @@ fn test_parsing_prefix_expressions() {
             prefix_op
         );
 
-        test_integer_literal(
+        test_literal_expression(
             prefix_right, 
             expected_value
         );
     }
 }
 
-fn test_integer_literal(il: &Expression, expected_value: i64) -> bool {
-
-    let Some(integ) = il.as_integral() else {
-        eprintln!(
-            "il not Expression::IntegerLiteral. got={}",
-            il
-        );
-        return false;
-    };
-
-    assert_eq!(
-        integ,
-        expected_value,
-        "IntegralLiteral.value is not {}. got={}",
-        expected_value,
-        integ,
-    );
-    assert_eq!(
-        il.token_literal(),
-        integ.to_string(),
-        "iteg.token_literal is not {}. got={}",
-        integ,
-        il.token_literal()
-    );
-
-    return true;
-}
-
-fn test_boolean_literal(exp: &Expression, value: bool) -> bool {
-    let Some(bo) = exp.as_boolean() else {
-        eprintln!(
-            "exp not Expression::Boolean. got={}",
-            exp
-        );
-        return false;
-    };
-
-    assert_eq!(
-        bo,
-        value,
-        "Boolean.value is not {}. got={}",
-        value,
-        bo,
-    );
-    assert_eq!(
-        exp.token_literal(),
-        bo.to_string(),
-        "bo.token_literal not {}. got={}",
-        value,
-        exp.token_literal()
-    );
-
-    return true;
-}
-
-fn test_literal_expression(exp: &Expression, expected: &Expression) -> bool {
-    match expected {
-        Expression::IntegerLiteral { value, .. } => {
-            test_integer_literal(exp, *value)
-        }
-        Expression::Ident(identifier) => {
-            test_identifier(exp, identifier.value.clone())
-        }
-        Expression::Boolean { value , ..} => {
-            test_boolean_literal(exp, *value)
-
-        }
-        _ => {
-            eprintln!("type of exp not handled. got {}", exp);
-            false
-        }
-    }
-}
 
 #[test]
 fn test_parsing_infix_expressions() {
@@ -401,45 +479,6 @@ fn test_parsing_infix_expressions() {
     }
 }
 
-fn test_infix_expression(
-    exp: &Expression, 
-    left: &Expression, 
-    operator: String, 
-    right: &Expression
-) -> bool {
-    let Some((
-        infix_left, 
-        infix_operator, 
-        infix_right
-    )) = exp.as_infix() else {
-        eprintln!("expression is not an Expression::Infix. got {}", exp);
-        return false;
-    };
-
-    if !test_literal_expression(
-        infix_left, 
-        left
-    ) {
-        return false;
-    }
-    
-    assert_eq!(
-        infix_operator,
-        operator,
-        "exp.operator is not {}. got={}",
-        operator,
-        infix_operator
-    );
-
-    if !test_literal_expression(
-        infix_right,
-        right
-    ) {
-        return false;
-    };
-
-    return true;
-}
 
 #[test]
 fn test_operator_precedence_parsing() {
