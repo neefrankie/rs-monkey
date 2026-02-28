@@ -1,11 +1,23 @@
 use std::fmt;
-use super::{Node, Expression, Identifier};
 
+use super::{Node, Expression, Identifier, BlockStatement};
+
+impl Node for Identifier {
+    fn token_literal(&self) -> String {
+        self.token.literal.clone()
+    }
+}
+
+impl fmt::Display for Identifier {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.value)
+    }
+}
 
 impl Node for Expression {
     fn token_literal(&self) -> String {
         match self {
-            Expression::Ident(identifier) => identifier.to_string(),
+            Expression::Ident(identifier) => identifier.token_literal(),
 
             Expression::IntegerLiteral { 
                 token, 
@@ -79,14 +91,14 @@ impl fmt::Display for Expression {
             } => {
                 write!(
                     f,
-                    "if {} {}",
+                    "if {} {{ {} }}",
                     condition,
                     consequence
                 )?;
 
                 match alternative {
                     Some(alt) => {
-                        write!(f, " else {}", alt)
+                        write!(f, " else {{ {} }}", alt)
                     },
                     None => Ok(()),
                 }
@@ -187,18 +199,28 @@ impl Expression {
             _ => None,
         }
     }
-}
 
-
-impl Node for Identifier {
-    fn token_literal(&self) -> String {
-        self.token.literal.clone()
+    pub fn as_if(&self) -> Option<(
+        &Expression, 
+        &BlockStatement, 
+        Option<&BlockStatement>
+    )> {
+        match self {
+            Expression::If {
+                condition,
+                consequence,
+                alternative,
+                ..
+            } => Some((
+                condition.as_ref(),
+                consequence,
+                alternative.as_ref(),
+            )),
+            _ => None,
+        }
     }
 }
 
-impl fmt::Display for Identifier {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.value)
-    }
-}
+
+
 
