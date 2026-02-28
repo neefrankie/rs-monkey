@@ -98,6 +98,8 @@ impl Node for BlockStatement {
 
 impl fmt::Display for BlockStatement {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.statements.iter().map(|s| s.to_string()).collect::<Vec<_>>().join("\n"))
+        write!(f, "{}", self.statements.iter().map(
+            |s| s.to_string()
+        ).collect::<Vec<_>>().join("\n"))
     }
 }
