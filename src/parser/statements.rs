@@ -81,8 +81,9 @@ impl Parser {
     }
 
     fn parse_expression_statement(&mut self) -> Result<Statement, ParseError> {
-        // x + 10;
+        // current_token points to `x` in x + 10;
         let current_token = self.current_token.clone();
+        // parseing x + 10
         let expr = self.parse_expression(Precedence::Lowest)?;
         
         if self.peek_token_is(TokenType::Semicolon) {

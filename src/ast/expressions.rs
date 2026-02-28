@@ -79,7 +79,7 @@ impl fmt::Display for Expression {
                 right,
                 ..
             } => write!(f, "({}{})", operator, right),
-            
+
             Expression::Infix {
                 left,
                 operator,
@@ -120,7 +120,7 @@ impl fmt::Display for Expression {
                     .join(", ");
                 write!(
                     f, 
-                    "{} ({}) {}", 
+                    "{}({}) {{ {} }}", 
                     token.literal, 
                     params, 
                     body

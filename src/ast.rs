@@ -26,9 +26,10 @@ pub enum Statement {
         token: token::Token,
         return_value: Option<Box<Expression>>,
     },
+    // x + 10;
     Expression {
-        token: token::Token,
-        expression: Box<Expression>,
+        token: token::Token, // x
+        expression: Box<Expression>, // x + 10
     },
 }
 
@@ -73,14 +74,18 @@ pub enum Expression {
         alternative: Option<BlockStatement>, // { return y; }
     },
     FunctionLiteral {
-        token: token::Token,
-        parameters: Vec<Identifier>,
-        body: BlockStatement,
+        // fn(x, y) {
+        //     return x + y;
+        // }
+        token: token::Token, // fn
+        parameters: Vec<Identifier>, // [x, y]
+        body: BlockStatement, // { return x + y; }
     },
     Call {
-        token: token::Token,
-        function: Box<Expression>,
-        arguments: Vec<Expression>,
+        // add(x, y)
+        token: token::Token, // add
+        function: Box<Expression>, // add
+        arguments: Vec<Expression>, // [x, y]
     },
 }
 
