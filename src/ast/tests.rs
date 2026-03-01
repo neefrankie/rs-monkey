@@ -1,5 +1,5 @@
 use super::*;
-use crate::token::{self, Token, TokenType};
+use crate::token::{Token, TokenType};
 
 fn new_int_token(value: i64) -> Token {
     Token {

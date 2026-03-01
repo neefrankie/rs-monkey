@@ -35,9 +35,9 @@ impl Precedence {
     }
 
     // 如果需要获取数值（很少需要）
-    pub fn value(&self) -> u8 {
-        *self as u8
-    }
+    // pub fn value(&self) -> u8 {
+    //     *self as u8
+    // }
 }
 
 // 如果你有很多优先级，可以用宏避免手动赋值：
