@@ -8,7 +8,7 @@ pub trait Node {
     fn token_literal(&self) -> String;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Identifier {
     pub token: token::Token,
     pub value: String, // token.literal
