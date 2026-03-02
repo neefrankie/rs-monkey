@@ -7,9 +7,9 @@ fn assert_eval(input: &str) -> Object {
     let lex = Lexer::new(input.to_string());
     let mut parser = Parser::new(lex);
     let program = parser.parse_program().expect("parse program failed");
-    let mut env = Environment::new();
+    let env = Environment::new();
 
-    return eval_program(program, &mut env);
+    return eval_program(program, env).expect("eval programm error");
 }
 
 fn assert_integer_object(obj: &Object, expected: i64) {
