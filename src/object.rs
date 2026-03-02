@@ -1,36 +1,37 @@
-use std::{fmt};
+use std::{cell::RefCell, fmt, rc::Rc};
+use crate::ast;
 
 mod environment;
 
 pub use environment::Environment;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+pub const TYPE_NAME_INTEGER: &'static str = "INTEGER";
+pub const TYPE_NAME_BOOLEAN: &'static str = "BOOLEAN";
+
+#[derive(Debug, Clone)]
 pub enum Object {
     Integer(i64),
     Boolean(bool),
     ReturnValue(Box<Object>),
     Null,
-    Error(String)
+    Error(String),
+    Function {
+        parameters: Vec<ast::Identifier>,
+        body: Rc<ast::BlockStatement>,
+        env: Rc<RefCell<Environment>>,
+    }
 }
 
 impl Object {
-    pub fn inspect(&self) -> String {
-        match self {
-            Object::Integer(value) => value.to_string(),
-            Object::Boolean(value) => value.to_string(),
-            Object::ReturnValue(obj) => obj.inspect(),
-            Object::Null => "null".to_string(),
-            Object::Error(message) => format!("ERROR: {}", message),
-        }
-    }
 
-    pub fn type_of(&self) -> String {
+    pub fn type_name(&self) -> &'static str {
         match self {
-            Object::Integer(_) => "INTEGER".to_string(),
-            Object::Boolean(_) => "BOOLEAN".to_string(),
-            Object::ReturnValue(_) => "RETURN_VALUE".to_string(),
-            Object::Null => "NULL".to_string(),
-            Object::Error(_) => "ERROR_OBJ".to_string(),
+            Object::Integer(_) => TYPE_NAME_INTEGER,
+            Object::Boolean(_) => TYPE_NAME_BOOLEAN,
+            Object::ReturnValue(_) => "RETURN_VALUE",
+            Object::Null => "NULL",
+            Object::Error(_) => "ERROR",
+            Object::Function { .. } => "FUNCTION",
         }
     }
 
@@ -47,17 +48,34 @@ impl Object {
             _ => false,
         }
     }
-
-    pub fn is_error(&self) -> bool {
-        match self {
-            Object::Error(_) => true,
-            _ => false,
-        }
-    }
 }
 
 impl fmt::Display for Object {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {}", self.type_of(), self.inspect())
+        match self {
+            Object::Integer(value) => write!(f, "{}", value),
+            Object::Boolean(value) => write!(f, "{}", value),
+            Object::ReturnValue(obj) => write!(f, "{}", obj),
+            Object::Null => write!(f, "null"),
+            Object::Error(message) => write!(f, "ERROR: {}", message),
+            Object::Function { 
+                parameters, 
+                body, 
+                ..
+            } => {
+                let params = parameters.iter()
+                    .map(
+                        |p| p.to_string()
+                    )
+                    .collect::<Vec<_>>()
+                    .join(", ");
+
+                write!(
+                    f,
+                    "fn ({}) {{\n{}\n}}",
+                    params, body
+                )
+            },
+        }
     }
 }
