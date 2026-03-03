@@ -1,47 +1,75 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use crate::ast::{self, Statement, Expression};
+use crate::evaluator::error::EvalError;
 use crate::object::{Object, Environment};
+
+mod error;
+mod infix;
+mod prefix;
+mod ident;
+
+use ident::eval_identifier;
+use prefix::eval_prefix_expression;
+use infix::eval_infix_expression;
 
 pub fn eval_program(
     program: ast::Program,
-    env: &mut Environment,
-) -> Object {
+    env: Rc<RefCell<Environment>>,
+) -> Result<Object, EvalError> {
     
-    let mut result = Object::Null;
+    let mut value = Object::Null;
 
     for stmt in program.statements {
-        result = eval_stmt(stmt, env);
+        let result  = eval_stmt(stmt, Rc::clone(&env));
 
-        if let Object::ReturnValue(value) = result {
-            return *value;
-        } else if result.is_error() {
-            return result;
-        }
-    }
-
-    return result;
-}
-
-pub fn eval_block_statement(
-    block: ast::BlockStatement,
-    env: &mut Environment,
-) -> Object {
-    let mut result = Object::Null;
-
-    for stmt in block.statements {
-        result = eval_stmt(stmt, env);
-
-        if !result.is_null() {
-            if result.is_return() || result.is_error() {
-                return result;
+        match result {
+            Ok(val) => {
+                if let Object::ReturnValue(ret_val) = val {
+                    return Ok(*ret_val);
+                }
+                value = val;
+            }
+            Err(err) => {
+                return Err(err);
             }
         }
     }
 
-    return result;
+    return Ok(value);
+}
+
+pub fn eval_block_statement(
+    block: Rc<ast::BlockStatement>,
+    env: Rc<RefCell<Environment>>,
+) -> Result<Object, EvalError> {
+    let mut value = Object::Null;
+
+    for stmt in block.statements {
+        let result = eval_stmt(stmt, Rc::clone(&env));
+
+        match result {
+            Ok(val) => {
+                if !val.is_null() && val.is_return() {
+                    return Ok(val);
+                }
+                value = val;
+            },
+            Err(err) => {
+                return Err(err);
+            }
+        }
+    }
+
+    return Ok(value);
 }
 
 
-pub fn eval_stmt(stmt: Statement, env: &mut Environment) -> Object {
+pub fn eval_stmt(
+    stmt: Statement,
+    env: Rc<RefCell<Environment>>,
+) -> Result<Object, EvalError> {
     match stmt {
         Statement::Expression {
             expression,
@@ -63,12 +91,11 @@ pub fn eval_stmt(stmt: Statement, env: &mut Environment) -> Object {
                         *value,
                         env,
                     );
-                    if val.is_error() {
-                        return val;
-                    }
-                    Object::ReturnValue(Box::new(val))
+                    val
                 },
-                None => Object::ReturnValue(Box::new(Object::Null))
+                None => Ok(
+                    Object::ReturnValue(Box::new(Object::Null))
+                )
             }
         }
 
@@ -80,25 +107,31 @@ pub fn eval_stmt(stmt: Statement, env: &mut Environment) -> Object {
             // For let a = 5;, value is 5
             // For let a = b + c;, value is b + c
             // which should have been saved to env.
-            let val = eval_expression(
+            let result = eval_expression(
                 *value,
-                env,
+                Rc::clone(&env),
             );
-            if val.is_error() {
-                return val;
+            match result {
+                Ok(val) => {
+                    // Save a: 5
+                    env.borrow_mut().set(
+                        name.value, 
+                        val.clone(),
+                    );
+                    return Ok(val);
+                }
+                Err(err) => {
+                    return Err(err);
+                }
             }
-            // Save a: 5
-            env.set(name.value, val.clone());
-
-            val
         }
     }
 }
 
 pub fn eval_expression(
     expression: Expression,
-    env: &mut Environment,
-) -> Object {
+    env: Rc<RefCell<Environment>>,
+) -> Result<Object, EvalError> {
     match expression {
         Expression::Ident(identifier) => {
             eval_identifier(identifier, env)
@@ -107,13 +140,15 @@ pub fn eval_expression(
             value ,
             ..
         } => {
-            Object::Integer(value)
+            Ok(Object::Integer(value))
         }
 
         Expression::Boolean { 
             value ,
             ..
-        } => Object::Boolean(value),
+        } => {
+            Ok(Object::Boolean(value))
+        },
 
         Expression::Prefix {  
             operator, 
@@ -124,10 +159,14 @@ pub fn eval_expression(
                 *right,
                 env,
             );
-            if right_value.is_error() {
-                return right_value;
+            
+            match right_value {
+                Ok(value) => eval_prefix_expression(
+                    operator, 
+                    value
+                ),
+                Err(_) => right_value,
             }
-            eval_prefix_expression(operator, right_value)
         },
 
         Expression::Infix {
@@ -138,19 +177,23 @@ pub fn eval_expression(
         } => {
             let left_value = eval_expression(
                 *left,
-                env,
+                Rc::clone(&env),
             );
-            if left_value.is_error() {
+            if left_value.is_err() {
                 return left_value;
             }
             let right_value = eval_expression(
                 *right,
-                env,
+                Rc::clone(&env),
             );
-            if right_value.is_error() {
+            if right_value.is_err() {
                 return right_value;
             }
-            eval_infix_expression(operator, left_value, right_value)
+            eval_infix_expression(
+                operator, 
+                left_value.unwrap(), 
+                right_value.unwrap(),
+            )
         },
 
         Expression::If { 
@@ -167,148 +210,145 @@ pub fn eval_expression(
             )
         }
 
-        _ => Object::Null
-    }
-}
+        Expression::FunctionLiteral {
+            parameters,
+            body,
+            ..
+        } => {
+            let function = Object::Function {
+                parameters,
+                body: Rc::new(body),
+                env: Rc::clone(&env),
+            };
+            Ok(function)
+        }
 
-fn eval_identifier(
-    identifier: ast::Identifier, 
-    env: &mut Environment
-) -> Object {
-    match env.get(&identifier.value) {
-        Some(value) => value,
-        None => Object::Error(format!("identifier not found: {}", identifier.value))
-    }
-}
-
-fn eval_prefix_expression(operator: String, right: Object) -> Object {
-    match operator.as_str() {
-        "!" => eval_bang_operator_expression(right),
-        "-" => eval_minus_operator_expression(right),
-        _ => Object::Error(format!("unknown operator: {}{}", operator, right.type_of()))
-    }
-}
-
-fn eval_bang_operator_expression(right: Object) -> Object {
-    match right {
-        Object::Boolean(value) => {
-            if value {
-                Object::Boolean(false)
-            } else {
-                Object::Boolean(true)
+        Expression::Call {
+            function,
+            arguments,
+            ..
+        } => {
+            let function_result = eval_expression(
+                *function,
+                Rc::clone(&env),
+            );
+            if function_result.is_err() {
+                return function_result;
+            }
+            let function = function_result.unwrap();
+            let args_result = eval_arguments(
+                arguments,
+                Rc::clone(&env),
+            );
+            match args_result {
+                Ok(args) => {
+                    apply_function(function, args)
+                }
+                Err(err) => {
+                    return Err(err);
+                }
             }
         }
-        Object::Null => Object::Boolean(true),
-        
-        _ => Object::Boolean(false)
 
+        _ => Ok(Object::Null)
     }
 }
 
-fn eval_minus_operator_expression(right: Object) -> Object {
-    match right {
-        Object::Integer(value) => {
-            Object::Integer(-value)
+
+fn eval_arguments(
+    expressions: Vec<Expression>,
+    env: Rc<RefCell<Environment>>,
+) -> Result<Vec<Object>, EvalError> {
+    let mut args = vec![];
+
+    for expression in expressions {
+        let evaluated = eval_expression(
+            expression,
+            Rc::clone(&env),
+        );
+        match evaluated {
+            Ok(val) => {
+                args.push(val);
+            },
+            Err(err) => {
+                return Err(err);
+            }
         }
-        _ => Object::Error(
-            format!(
-                "unknown operator: -{}", 
-                right.type_of()
-            )
-        )
     }
+
+    Ok(args)
 }
 
-fn eval_infix_expression(operator: String, left: Object, right: Object) -> Object {
-    match (&left, &right) {
-        (Object::Integer(left_value), Object::Integer(right_value)) => {
-            eval_integer_infix_expression(
-                operator, 
-                *left_value, 
-                *right_value
-            )
-        }
-        (Object::Boolean(left_value), Object::Boolean(right_value)) => {
-            eval_boolean_infix_expression(
-                operator, 
-                *left_value, 
-                *right_value
-            )
+fn apply_function(
+    function: Object,
+    args: Vec<Object>,
+) -> Result<Object, EvalError> {
+    match function {
+        Object::Function {
+            parameters,
+            body,
+            env: function_env,
+        } => {
+            let extended_env = extend_function_env(
+                function_env,
+                parameters,
+                args,
+            );
+            eval_block_statement(body, extended_env)
         }
         _ => {
-            if &left.type_of() != &right.type_of() {
-                return Object::Error(format!(
-                    "type mismatch: {} {} {}", 
-                    left.type_of(), 
-                    operator, 
-                    right.type_of()
-                ));
-            }
-            
-            return Object::Error(format!(
-                "unknown operator: {} {} {}", 
-                left.type_of(), 
-                operator, 
-                right.type_of()
+            return Err(EvalError::UnknownFunction(
+                function.type_name().to_string(),
             ));
         }
     }
-
 }
 
-fn eval_integer_infix_expression(operator: String, left: i64, right: i64) -> Object {
-    match operator.as_str() {
-        "+" => Object::Integer(left + right),
-        "-" => Object::Integer(left - right),
-        "*" => Object::Integer(left * right),
-        "/" => Object::Integer(left / right),
-        ">" => Object::Boolean(left > right),
-        "<" => Object::Boolean(left < right),
-        "==" => Object::Boolean(left == right),
-        "!=" => Object::Boolean(left != right),
-        _ => Object::Error(
-            format!(
-                "unknown operator: INTEGER {} INTEGER",
-                operator,
-            )
+fn extend_function_env(
+    env: Rc<RefCell<Environment>>,
+    parameters: Vec<ast::Identifier>,
+    args: Vec<Object>,
+) -> Rc<RefCell<Environment>> {
+    let function_env = Environment::new_enclosed(
+        Rc::clone(&env),
+    );
+    for (i, param) in parameters.iter().enumerate() {
+        function_env.borrow_mut().set(
+            param.value.clone(),
+            args[i].clone(),
         )
     }
-}
 
-fn eval_boolean_infix_expression(operator: String, left: bool, right: bool) -> Object {
-    match operator.as_str() {
-        "==" => Object::Boolean(left == right),
-        "!=" => Object::Boolean(left != right),
-        _ => Object::Error(
-            format!(
-                "unknown operator: BOOLEAN {} BOOLEAN",
-                operator,
-            )
-        )
-    }
+    function_env
 }
 
 fn eval_if_expression(
     condition: Expression, 
     consequence: ast::BlockStatement, 
     alternative: Option<ast::BlockStatement>,
-    env: &mut Environment,
-) -> Object {
-    let condition_value = eval_expression(
+    env: Rc<RefCell<Environment>>,
+) -> Result<Object, EvalError> {
+    let condition_result = eval_expression(
         condition,
-        env,
+        Rc::clone(&env),
     );
     
-    if condition_value.is_error() {
-        return condition_value;
+    if condition_result.is_err() {
+        return condition_result;
     }
 
-    if is_truthy(condition_value) {
-        return eval_block_statement(consequence, env);
+    if is_truthy(condition_result.unwrap()) {
+        return eval_block_statement(
+            Rc::new(consequence), 
+            env
+        );
     } else if alternative.is_some() {
-        return eval_block_statement(alternative.unwrap(), env);
+        return eval_block_statement(
+            Rc::new(alternative.unwrap()), 
+            env
+        );
     } else {
-        return Object::Null;
+        return Ok(Object::Null);
     }
 }
 
