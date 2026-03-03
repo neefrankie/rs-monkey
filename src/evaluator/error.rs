@@ -20,6 +20,7 @@ pub enum EvalError {
         operator: String,
         right_type: String,
     },
+    UnknownFunction(String),
 }
 
 pub fn new_unknown_boolean_infix(operator: String) -> EvalError {
@@ -59,6 +60,10 @@ impl fmt::Display for EvalError {
 
             EvalError::UnknownInfix{left_type, operator, right_type} => {
                 write!(f, "unknown operator: {} {} {}", left_type, operator, right_type)
+            }
+
+            EvalError::UnknownFunction(name) => {
+                write!(f, "not a function: {}", name)
             }
         }
     }
