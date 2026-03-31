@@ -9,7 +9,7 @@ fn assert_eval(input: &str) -> Object {
     let program = parser.parse_program().expect("parse program failed");
     let env = Environment::new();
 
-    return eval_program(program, env).expect("eval programm error");
+    return eval_program(&program, env).expect("eval programm error");
 }
 
 fn assert_integer_object(obj: &Object, expected: i64) {

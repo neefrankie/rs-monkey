@@ -216,11 +216,20 @@ impl Expression {
                 consequence,
                 alternative,
                 ..
-            } => Some((
-                condition.as_ref(),
-                consequence,
-                alternative.as_ref(),
-            )),
+            } => {
+                match alternative {
+                    Some(alt) => Some((
+                        condition.as_ref(),
+                        consequence,
+                        Some(alt),
+                    )),
+                    None => Some((
+                        condition.as_ref(),
+                        consequence,
+                        None,
+                    )),
+                }
+            },
             _ => None,
         }
     }

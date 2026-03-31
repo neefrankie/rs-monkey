@@ -1,4 +1,5 @@
 use crate::token;
+use std::rc::Rc;
 
 mod statements;
 mod expressions;
@@ -8,20 +9,25 @@ pub trait Node {
     fn token_literal(&self) -> String;
 }
 
-#[derive(Debug, Clone)]
-pub struct Identifier {
-    pub token: token::Token,
-    pub value: String, // token.literal
+pub struct Program {
+    pub statements: Vec<Statement>,
 }
 
-
+// When Expression is used in a field, you have to wrap in it a Box
+// since this is a recursive:
+// BlockStatement -> Statement -> Expression -> BlockStatement -> ...
+// For &Box<Expression>, yod don't need to manually deref it.
+// It could be passed directly as &Expression.
 #[derive(Debug)]
 pub enum Statement {
+    // let x = 5;
     Let {
         token: token::Token,
         name: Identifier,
         value: Box<Expression>,
     },
+    // return;
+    // return 10;
     Return {
         token: token::Token,
         return_value: Option<Box<Expression>>,
@@ -53,14 +59,14 @@ pub enum Expression {
     Prefix {
         token: token::Token,
         operator: String,
-        right: Box<Expression>,
+        right: Rc<Expression>,
     },
     Infix {
         // x > y
         token: token::Token, // >
-        left: Box<Expression>, // x
+        left: Rc<Expression>, // x
         operator: String, // >
-        right: Box<Expression>, // y
+        right: Rc<Expression>, // y
     },
     If {
         // if (x > y) {
@@ -69,9 +75,9 @@ pub enum Expression {
         //     return y;
         // }
         token: token::Token, // if
-        condition: Box<Expression>, // x > y
-        consequence: BlockStatement, // { return x; }
-        alternative: Option<BlockStatement>, // { return y; }
+        condition: Rc<Expression>, // x > y
+        consequence: Rc<BlockStatement>, // { return x; }
+        alternative: Option<Rc<BlockStatement>>, // { return y; }
     },
     FunctionLiteral {
         // fn(x, y) {
@@ -79,19 +85,21 @@ pub enum Expression {
         // }
         token: token::Token, // fn
         parameters: Vec<Identifier>, // [x, y]
-        body: BlockStatement, // { return x + y; }
+        body: Rc<BlockStatement>, // { return x + y; }
     },
     Call {
         // add(x, y)
         token: token::Token, // add
-        function: Box<Expression>, // add
+        function: Rc<Expression>, // add
         arguments: Vec<Expression>, // [x, y]
     },
 }
 
 
-pub struct Program {
-    pub statements: Vec<Statement>,
+#[derive(Debug, Clone)]
+pub struct Identifier {
+    pub token: token::Token,
+    pub value: String, // token.literal
 }
 
 

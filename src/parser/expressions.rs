@@ -1,3 +1,4 @@
+use std::rc::Rc;
 use crate::ast::{self, BlockStatement, Expression, Identifier};
 use crate::token::{TokenType};
 
@@ -92,7 +93,7 @@ impl Parser {
         return Ok(Expression::Prefix {
             token: current_token,
             operator,
-            right: Box::new(right),
+            right: Rc::new(right),
         });
     }
 
@@ -128,7 +129,7 @@ impl Parser {
         let consequence = self.parse_block_statement()?;
 
         // Current token now points to }.
-        let mut alternative: Option<BlockStatement> = None;
+        let mut alternative: Option<Rc<BlockStatement>> = None;
         // Is next token an else?
         // 如果遇到 else，则将词法单元前移两位。
         if self.peek_token_is(TokenType::Else) {
@@ -140,13 +141,13 @@ impl Parser {
 
             let alt = self.parse_block_statement()?;
 
-            alternative = Some(alt);
+            alternative = Some(Rc::new(alt));
         }
 
         return Ok(Expression::If {
             token: if_token,
-            condition: Box::new(condition),
-            consequence,
+            condition: Rc::new(condition),
+            consequence: Rc::new(consequence),
             alternative: alternative,
         });
     }
@@ -180,7 +181,7 @@ impl Parser {
         Ok(Expression::FunctionLiteral {
             token,
             parameters,
-            body,
+            body: Rc::new(body),
         })
     }
 
@@ -259,9 +260,9 @@ impl Parser {
 
         return Ok(Expression::Infix {
             token: current_token,
-            left: Box::new(left),
+            left: Rc::new(left),
             operator,
-            right: Box::new(right),
+            right: Rc::new(right),
         })
     }
 
@@ -274,7 +275,7 @@ impl Parser {
         
         return Ok(Expression::Call {
             token,
-            function: Box::new(function),
+            function: Rc::new(function),
             arguments: args,
         })
     }

@@ -119,16 +119,16 @@ fn new_prefix_expr(operator: &str, right: Expression) -> Expression {
     Expression::Prefix {
         token: new_prefix_token(operator),
         operator: operator.to_string(),
-        right: Box::new(right),
+        right: Rc::new(right),
     }
 }
 
 fn new_infix_expr(left: Expression, operator: &str, right: Expression) -> Expression {
     Expression::Infix {
         token: new_operator_token(operator),
-        left: Box::new(left),
+        left: Rc::new(left),
         operator: operator.to_string(),
-        right: Box::new(right),
+        right: Rc::new(right),
     }
 }
 
@@ -209,29 +209,29 @@ fn test_infix_string() {
 fn test_if_string() {
     let if_expr = Expression::If {
         token: new_if_token(),
-        condition: Box::new(
+        condition: Rc::new(
                 new_infix_expr(
                 new_ident_expr("x"),
                 "<",
                 new_ident_expr("y")
             )
         ),
-        consequence: new_block_stmt(vec![
+        consequence: Rc::new(new_block_stmt(vec![
             Statement::Expression {
                 token: new_ident_token("x"),
                 expression: Box::new(
                     new_ident_expr("x")
                 )
             }
-        ]),
-        alternative: Some(new_block_stmt(vec![
+        ])),
+        alternative: Some(Rc::new(new_block_stmt(vec![
             Statement::Expression {
                 token: new_ident_token("y"),
                 expression: Box::new(
                     new_ident_expr("y")
                 )
             }
-        ]),)
+        ])),)
     };
 
     assert_eq!(
@@ -248,14 +248,14 @@ fn test_function_string() {
             new_identifier("x"),
             new_identifier("y")
         ],
-        body: new_block_stmt(vec![
+        body: Rc::new(new_block_stmt(vec![
             Statement::Expression {
                 token: new_ident_token("x"),
                 expression: Box::new(
                     new_ident_expr("x")
                 )
             }
-        ])
+        ]))
     };
 
     assert_eq!(
@@ -268,7 +268,7 @@ fn test_function_string() {
 fn test_call_string() {
     let call = Expression::Call {
         token: new_ident_token("add"),
-        function: Box::new(
+        function: Rc::new(
             new_ident_expr("add")
         ),
         arguments: vec![
