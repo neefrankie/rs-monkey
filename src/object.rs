@@ -7,6 +7,7 @@ pub use environment::Environment;
 
 pub const TYPE_NAME_INTEGER: &'static str = "INTEGER";
 pub const TYPE_NAME_BOOLEAN: &'static str = "BOOLEAN";
+pub const TYPE_NAME_STRING: &'static str = "STRING";
 
 #[derive(Debug, Clone)]
 pub enum Object {
@@ -19,7 +20,8 @@ pub enum Object {
         parameters: Vec<ast::Identifier>,
         body: Rc<ast::BlockStatement>,
         env: Rc<RefCell<Environment>>,
-    }
+    },
+    String(String),
 }
 
 impl Object {
@@ -32,6 +34,7 @@ impl Object {
             Object::Null => "NULL",
             Object::Error(_) => "ERROR",
             Object::Function { .. } => "FUNCTION",
+            Object::String(_) => TYPE_NAME_STRING,
         }
     }
 
@@ -76,6 +79,7 @@ impl fmt::Display for Object {
                     params, body
                 )
             },
+            Object::String(value) => write!(f, "{}", value),
         }
     }
 }

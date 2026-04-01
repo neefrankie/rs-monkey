@@ -245,6 +245,26 @@ fn assert_no_parse_errors(result: Result<Program, Vec<ParseError>>) -> Program {
     }
 }
 
+fn assert_statements_len(program: &Program, expected: usize) {
+    assert_eq!(
+        program.statements.len(),
+        expected,
+        "program.statements does not contain {} statement. got={}", expected,
+        program.statements.len()
+    );
+}
+
+fn unwrap_expression_statement(stmt: &Statement) -> &Expression {
+    match stmt {
+        Statement::Expression {
+            expression,
+            .. 
+        } => expression,
+        _ => panic!("Statement is not an ExpressionStatement"),
+
+    }
+}
+
 
 #[test]
 fn test_precedence() {
@@ -721,5 +741,28 @@ fn test_call_expression_parsing() {
         }
 
         _ => panic!("stmt.Expression is not a CallExpression. got={}", expr),
+    }
+}
+
+#[test]
+fn test_string_literal_expression() {
+    let input = "\"hello world\";";
+
+    let lex = Lexer::new(input.to_string());
+    let mut parser = Parser::new(lex);
+    let program = assert_no_parse_errors(parser.parse_program());
+
+    assert_statements_len(&program, 1);
+    let expr = unwrap_expression_statement(&program.statements[0]);
+
+    match expr {
+        Expression::StringLiteral {
+            value,
+            ..
+        } => {
+            assert_eq!(value, "hello world");
+        }
+
+        _ => panic!("expression is not StringLiteral. got={}", expr),
     }
 }

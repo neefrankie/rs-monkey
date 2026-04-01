@@ -1,6 +1,6 @@
 use std::{fmt, error};
 
-use crate::object::{TYPE_NAME_INTEGER, TYPE_NAME_BOOLEAN};
+use crate::object::{TYPE_NAME_BOOLEAN, TYPE_NAME_INTEGER, TYPE_NAME_STRING};
 
 #[derive(Debug)]
 pub enum EvalError {
@@ -36,6 +36,14 @@ pub fn new_unknown_integer_infix(operator: String) -> EvalError {
         left_type: TYPE_NAME_INTEGER.to_string(),
         operator,
         right_type: TYPE_NAME_INTEGER.to_string(),
+    }
+}
+
+pub fn new_unknown_string_infix(operator: String) -> EvalError {
+    EvalError::UnknownInfix{
+        left_type: TYPE_NAME_STRING.to_string(),
+        operator,
+        right_type: TYPE_NAME_STRING.to_string(),
     }
 }
 

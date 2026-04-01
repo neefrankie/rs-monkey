@@ -152,6 +152,13 @@ pub fn eval_expression(
             Ok(Object::Boolean(*value))
         },
 
+        Expression::StringLiteral {
+            value,
+            ..
+        } => {
+            Ok(Object::String(value.clone()))
+        }
+
         Expression::Prefix {  
             operator, 
             right ,

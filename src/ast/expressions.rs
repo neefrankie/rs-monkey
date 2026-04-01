@@ -53,6 +53,11 @@ impl Node for Expression {
                 token,
                 ..
             } => token.literal.clone(),
+
+            Expression::StringLiteral {
+                token,
+                ..
+            } => token.literal.clone(),
         }
     }
 }
@@ -143,6 +148,11 @@ impl fmt::Display for Expression {
                     args
                 )
             },
+
+            Expression::StringLiteral {
+                token,
+                ..
+            } => write!(f, "\"{}\"", token.literal),
         }
     }
 }

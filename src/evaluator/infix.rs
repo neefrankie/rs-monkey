@@ -1,5 +1,5 @@
 use crate::{object::Object};
-use super::error::{EvalError, new_unknown_boolean_infix, new_unknown_integer_infix};
+use super::error::{EvalError, new_unknown_boolean_infix, new_unknown_integer_infix, new_unknown_string_infix};
 
 pub(super) fn eval_infix_expression(
     operator: String, 
@@ -19,6 +19,13 @@ pub(super) fn eval_infix_expression(
                 operator, 
                 *left_value, 
                 *right_value
+            )
+        }
+        (Object::String(left_value), Object::String(right_value)) => {
+            eval_string_infix_expression(
+                operator, 
+                left_value, 
+                right_value
             )
         }
         _ => {
@@ -63,5 +70,16 @@ fn eval_boolean_infix_expression(
         "==" => Ok(Object::Boolean(left == right)),
         "!=" => Ok(Object::Boolean(left != right)),
         _ => Err(new_unknown_boolean_infix(operator)),
+    }
+}
+
+fn eval_string_infix_expression(
+    operator: String, 
+    left: &str, 
+    right: &str
+) -> Result<Object, EvalError> {
+    match operator.as_str() {
+        "+" => Ok(Object::String(format!("{}{}", left, right))),
+        _ => Err(new_unknown_string_infix(operator)),
     }
 }

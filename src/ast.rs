@@ -93,6 +93,10 @@ pub enum Expression {
         function: Rc<Expression>, // add
         arguments: Vec<Expression>, // [x, y]
     },
+    StringLiteral {
+        token: token::Token,
+        value: String,
+    },
 }
 
 

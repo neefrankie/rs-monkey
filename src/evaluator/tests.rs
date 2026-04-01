@@ -175,6 +175,7 @@ fn test_error_handling() {
         ("-true", "unknown operator: -BOOLEAN"),
         ("true + false;", "unknown operator: BOOLEAN + BOOLEAN"),
         ("5; true + false; 5;", "unknown operator: BOOLEAN + BOOLEAN"),
+        (r#""Hello" - "world""#, "unknown operator: STRING - STRING"),
         ("if (10 > 1) { true + false; }", "unknown operator: BOOLEAN + BOOLEAN"),
         ("if (10 > 1) {
             if (10 > 1) {
@@ -212,5 +213,39 @@ fn test_let_statements() {
     for (input, expected) in tests {
         let evaluated = assert_eval(input);
         assert_integer_object(&evaluated, expected);
+    }
+}
+
+#[test]
+fn test_string_literal() {
+    let input = "\"Hello World!\"";
+    let evaluated = assert_eval(input);
+    match evaluated {
+        Object::String(value) => assert_eq!(
+            value,
+            "Hello World!",
+            "object has wrong value. got {}, want {}",
+            value,
+            "Hello World!"
+        ),
+        _ => panic!("object is not String. got {}", evaluated),
+    }
+
+}
+
+#[test]
+fn test_string_concatenation() {
+    let input = r#""Hello" + " " + "World!""#;
+    let evaluated = assert_eval(input);
+
+    match evaluated {
+        Object::String(value) => assert_eq!(
+            value,
+            "Hello World!",
+            "object has wrong value. got {}, want {}",
+            value,
+            "Hello World!",
+        ),
+        _ => panic!("object is not String. got {}", evaluated),
     }
 }

@@ -308,4 +308,11 @@ impl Parser {
 
         Ok(args)
     }
+
+    fn parse_string_literal(&mut self) -> Result<Expression, ParseError> {
+        return Ok(Expression::StringLiteral {
+            token: self.current_token.clone(),
+            value: self.current_token.literal.clone(),
+        });
+    }
 }
