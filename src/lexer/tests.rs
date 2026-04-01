@@ -1,6 +1,115 @@
 use super::*;
 
 #[test]
+fn test_read_char() {
+    let input = "=+(){},;";
+    let mut lexer = Lexer::new(input.to_string());
+
+    assert_eq!(lexer.position, 0);
+    assert_eq!(lexer.ch, b'=');
+    assert_eq!(lexer.peek_char(), b'+');
+
+    lexer.read_char();
+    assert_eq!(lexer.position, 1);
+    assert_eq!(lexer.ch, b'+');
+    assert_eq!(lexer.peek_char(), b'(');
+    
+
+    lexer.read_char();
+    assert_eq!(lexer.position, 2);
+    assert_eq!(lexer.ch, b'(');
+    assert_eq!(lexer.peek_char(), b')');
+
+    lexer.read_char();
+    assert_eq!(lexer.position, 3);
+    assert_eq!(lexer.ch, b')');
+    assert_eq!(lexer.peek_char(), b'{');
+
+    lexer.read_char();
+    assert_eq!(lexer.position, 4);
+    assert_eq!(lexer.ch, b'{');
+    assert_eq!(lexer.peek_char(), b'}');
+
+    lexer.read_char();
+    assert_eq!(lexer.position, 5);
+    assert_eq!(lexer.ch, b'}');
+    assert_eq!(lexer.peek_char(), b',');
+
+    lexer.read_char();
+    assert_eq!(lexer.position, 6);
+    assert_eq!(lexer.ch, b',');
+    assert_eq!(lexer.peek_char(), b';');
+
+    lexer.read_char();
+    assert_eq!(lexer.position, 7);
+    assert_eq!(lexer.ch, b';');
+    assert_eq!(lexer.peek_char(), b'\0');
+
+    lexer.read_char();
+    assert_eq!(lexer.position, 8);
+    assert_eq!(lexer.ch, b'\0');
+    assert_eq!(lexer.peek_char(), b'\0');
+}
+
+#[test]
+fn test_read_identifier() {
+    let input = "let fn five";
+    let mut lexer = Lexer::new(input.to_string());
+
+    let ident = lexer.read_identifier();
+    assert_eq!(ident, "let");
+    assert_eq!(lexer.position, 3);
+    assert_eq!(lexer.ch, b' ');
+
+    lexer.read_char();
+
+    let ident = lexer.read_identifier();
+    assert_eq!(ident, "fn");
+    assert_eq!(lexer.position, 6);
+    assert_eq!(lexer.ch, b' ');
+
+    lexer.read_char();
+
+    let ident = lexer.read_identifier();
+    assert_eq!(ident, "five");
+    assert_eq!(lexer.position, 11);
+    assert_eq!(lexer.ch, b'\0');
+}
+
+#[test]
+fn test_skip_whitespace() {
+    let input = " \t\n";
+    let mut lexer = Lexer::new(input.to_string());
+
+    lexer.read_char();
+    lexer.skip_whitespace();
+    assert_eq!(lexer.position, 3);
+    assert_eq!(lexer.ch, b'\0');
+}
+
+#[test]
+fn test_read_number() {
+    let input = "15;";
+    let mut lexer = Lexer::new(input.to_string());
+
+    let number = lexer.read_number();
+    assert_eq!(number, "15");
+    assert_eq!(lexer.position, 2);
+    assert_eq!(lexer.ch, b';');
+}
+
+#[test]
+fn test_read_string() {
+    let input = "\"hello world\"";
+    let mut lexer = Lexer::new(input.to_string());
+
+    let string = lexer.read_string();
+    assert_eq!(string, "hello world");
+    assert_eq!(lexer.position, 12);
+    assert_eq!(lexer.ch, b'"');
+}
+
+#[test]
 fn test_next_token() {
     
 
@@ -23,6 +132,8 @@ return false;
 
 10 == 10;
 10 != 9;
+"foobar"
+"foo bar"
 "#;
 
     let tests = vec![
@@ -99,6 +210,8 @@ return false;
         (TokenType::NotEq, "!="),
         (TokenType::Int, "9"),
         (TokenType::Semicolon, ";"),
+        (TokenType::String, "foobar"),
+        (TokenType::String, "foo bar"),
         (TokenType::Eof, ""),
     ];
 
