@@ -1,10 +1,14 @@
 use crate::token::{self, TokenType};
 
+// In Rust, we use u8 to represent a byte.
+// u8 is unsigned 8 bit.
+// It stores numbers from 0 to 2^8-1, which equals 0 to 255,
+// which inludes all ASCII characters.
 pub struct Lexer {
     input: Vec<u8>,
     position: usize, // 指向所输入字符串中与ch字节对应的字符
     read_position: usize, // 始终指向所输入字符串中的下一个字符
-    ch: u8,
+    ch: u8, // The char pointed by position
 }
 
 impl Lexer { 
@@ -27,8 +31,6 @@ impl Lexer {
         }
         self.position = self.read_position;
         self.read_position += 1;
-        
-        println!("LEXER: pos={}, read_pos={}, ch='{}'", self.position, self.read_position, self.ch as char)
     }
 
     fn peek_char(&self) -> u8 {
@@ -75,6 +77,13 @@ impl Lexer {
             b')' => new_token(TokenType::RParen, self.ch),
             b'{' => new_token(TokenType::LBrace, self.ch),
             b'}' => new_token(TokenType::RBrace, self.ch),
+            b'"' => {
+                let literal = self.read_string();
+                token::Token {
+                    token_type: TokenType::String, 
+                    literal,
+                }
+            }
             0 => token::Token { token_type: TokenType::Eof, literal: String::new() },
             _ => {
                 if is_letter(self.ch) {
@@ -96,6 +105,7 @@ impl Lexer {
     }
 
     fn read_identifier(&mut self) -> String {
+        // Stops after the identifier.
         let position = self.position;
         while is_letter(self.ch) {
             self.read_char();
@@ -104,12 +114,14 @@ impl Lexer {
     }
 
     fn skip_whitespace(&mut self) {
+        // Move position to the first non-whitespace character
         while self.ch == b' ' || self.ch == b'\t' || self.ch == b'\n' || self.ch == b'\r' {
             self.read_char();
         }
     }
 
     fn read_number(&mut self) -> String {
+        // Move position to the first non-digit character
         let position = self.position;
         while is_digit(self.ch) {
             self.read_char();
@@ -117,7 +129,18 @@ impl Lexer {
         String::from_utf8_lossy(&self.input[position..self.position]).to_string()
     }
 
-    
+    fn read_string(&mut self) -> String {
+        // Move position one step after starting`"`
+        self.read_char();
+        let position = self.position;
+        while self.ch != b'"' && self.ch != 0 {
+            self.read_char();
+        }
+        // Now char points to ending `"`.
+        // We could slice between "..."
+        // Caller must move to next char
+        String::from_utf8_lossy(&self.input[position..self.position]).to_string()
+    }
 }
 
 fn new_token(kind: token::TokenType, ch: u8) -> token::Token {
