@@ -1,5 +1,4 @@
-use crate::object::{Object};
-use super::error::{EvalError};
+use crate::object::{Object, EvalError};
 
 pub(super) fn eval_prefix_expression(operator: String, right: Object) -> Result<Object, EvalError> {
     match operator.as_str() {

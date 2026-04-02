@@ -1,5 +1,4 @@
-use crate::{object::Object};
-use super::error::{EvalError, new_unknown_boolean_infix, new_unknown_integer_infix, new_unknown_string_infix};
+use crate::object::{Object, EvalError};
 
 pub(super) fn eval_infix_expression(
     operator: String, 
@@ -28,19 +27,11 @@ pub(super) fn eval_infix_expression(
                 right_value
             )
         }
-        _ => {
-            if &left.type_name() != &right.type_name() {
-                return Err(EvalError::TypeMismatch { 
-                    left_type: left.type_name().to_string(), 
-                    operator, 
-                    right_type: right.type_name().to_string(),
-                });
-            }
-            
+        _ => {            
             return Err(EvalError::UnknownInfix { 
-                left_type: left.type_name().to_string(), 
+                left: left.type_name().to_string(), 
                 operator, 
-                right_type: right.type_name().to_string(), 
+                right: right.type_name().to_string(), 
             });
         }
     }
@@ -57,7 +48,11 @@ fn eval_integer_infix_expression(operator: String, left: i64, right: i64) -> Res
         "<" => Ok(Object::Boolean(left < right)),
         "==" => Ok(Object::Boolean(left == right)),
         "!=" => Ok(Object::Boolean(left != right)),
-        _ => Err(new_unknown_integer_infix(operator))
+        _ => Err(EvalError::UnknownInfix {
+            left: left.to_string(),
+            operator,
+            right: right.to_string(),
+        })
     }
 }
 
@@ -69,7 +64,11 @@ fn eval_boolean_infix_expression(
     match operator.as_str() {
         "==" => Ok(Object::Boolean(left == right)),
         "!=" => Ok(Object::Boolean(left != right)),
-        _ => Err(new_unknown_boolean_infix(operator)),
+        _ => Err(EvalError::UnknownInfix {
+            left: left.to_string(), 
+            operator, 
+            right: right.to_string(), 
+        }),
     }
 }
 
@@ -80,6 +79,10 @@ fn eval_string_infix_expression(
 ) -> Result<Object, EvalError> {
     match operator.as_str() {
         "+" => Ok(Object::String(format!("{}{}", left, right))),
-        _ => Err(new_unknown_string_infix(operator)),
+        _ => Err(EvalError::UnknownInfix {
+            left: left.to_string(),
+            operator,
+            right: right.to_string(),
+        }),
     }
 }

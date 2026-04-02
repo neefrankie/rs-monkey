@@ -1,9 +1,8 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::object::{Object, Environment};
+use crate::object::{Object, Environment, EvalError};
 use crate::ast;
-use super::error::{EvalError};
 
 pub(super) fn eval_identifier(
     identifier: &ast::Identifier, 

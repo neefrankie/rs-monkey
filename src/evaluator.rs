@@ -2,10 +2,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::ast::{self, Statement, Expression};
-pub use crate::evaluator::error::EvalError;
-use crate::object::{Object, Environment};
+use crate::object::{Object, Environment, EvalError};
 
-mod error;
 mod infix;
 mod prefix;
 mod ident;
@@ -303,7 +301,12 @@ fn apply_function(
                 args,
             );
             eval_block_statement(&body, extended_env)
-        }
+        },
+
+        Object::Builtin(builtin) => {
+            builtin(args)
+        },
+
         _ => {
             return Err(EvalError::UnknownFunction(
                 function.type_name().to_string(),
