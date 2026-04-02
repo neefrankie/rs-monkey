@@ -23,7 +23,8 @@ pub enum Object {
         env: Rc<RefCell<Environment>>,
     },
     String(String),
-    Builtin(BuiltinFunction)
+    Builtin(BuiltinFunction),
+    Array(Vec<Object>),
 }
 
 impl Object {
@@ -38,6 +39,7 @@ impl Object {
             Object::Function { .. } => "FUNCTION",
             Object::String(_) => "STRING",
             Object::Builtin(_) => "BUILTIN_OBJ",
+            Object::Array(_) => "ARRAY",
         }
     }
 
@@ -84,6 +86,20 @@ impl fmt::Display for Object {
             },
             Object::String(value) => write!(f, "{}", value),
             Object::Builtin(_) => write!(f, "builtin function"),
+            Object::Array(elements) => {
+                let elements = elements.iter()
+                    .map(
+                        |e| e.to_string()
+                    )
+                    .collect::<Vec<_>>()
+                    .join(", ");
+
+                write!(
+                    f,
+                    "[{}]",
+                    elements
+                )
+            },
         }
     }
 }

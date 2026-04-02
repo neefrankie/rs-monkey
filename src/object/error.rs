@@ -22,6 +22,10 @@ pub enum EvalError {
         expected: String,
         got: String,
     },
+    IndexOutOfBounds{
+        index: i64,
+        max_index: i64,
+    },
 }
 
 
@@ -55,6 +59,10 @@ impl fmt::Display for EvalError {
 
             EvalError::TypeMismatch { expected, got } => {
                 write!(f, "type mismatch: expected {}, got {}", expected, got)
+            }
+
+            EvalError::IndexOutOfBounds { index, max_index } => {
+                write!(f, "index out of bounds: index {}, max index {}", index, max_index)
             }
         }
     }
