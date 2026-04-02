@@ -144,7 +144,7 @@ fn new_let_stmt(name: &str, value: Expression) -> Statement {
     Statement::Let {
         token: new_let_token(),
         name: new_identifier(name),
-        value: Box::new(value),
+        value: Rc::new(value),
     }
 }
 
@@ -219,7 +219,7 @@ fn test_if_string() {
         consequence: Rc::new(new_block_stmt(vec![
             Statement::Expression {
                 token: new_ident_token("x"),
-                expression: Box::new(
+                expression: Rc::new(
                     new_ident_expr("x")
                 )
             }
@@ -227,7 +227,7 @@ fn test_if_string() {
         alternative: Some(Rc::new(new_block_stmt(vec![
             Statement::Expression {
                 token: new_ident_token("y"),
-                expression: Box::new(
+                expression: Rc::new(
                     new_ident_expr("y")
                 )
             }
@@ -251,7 +251,7 @@ fn test_function_string() {
         body: Rc::new(new_block_stmt(vec![
             Statement::Expression {
                 token: new_ident_token("x"),
-                expression: Box::new(
+                expression: Rc::new(
                     new_ident_expr("x")
                 )
             }
@@ -300,7 +300,7 @@ fn test_let_string() {
 fn test_return_string() {
     let stmt = Statement::Return {
         token: new_return_token(),
-        return_value: Some(Box::new(
+        return_value: Some(Rc::new(
             new_ident_expr("x")
         ))
     };
@@ -315,7 +315,7 @@ fn test_return_string() {
 fn test_expression_stmt_string() {
     let stmt = Statement::Expression {
         token: new_ident_token("x"),
-        expression: Box::new(
+        expression: Rc::new(
             new_ident_expr("x")
         )
     };

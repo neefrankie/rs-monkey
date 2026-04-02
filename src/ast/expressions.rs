@@ -58,6 +58,16 @@ impl Node for Expression {
                 token,
                 ..
             } => token.literal.clone(),
+
+            Expression::ArrayLiteral {
+                token,
+                ..
+            } => token.literal.clone(),
+
+            Expression::Index {
+                token,
+                ..
+            } => token.literal.clone(),
         }
     }
 }
@@ -153,6 +163,25 @@ impl fmt::Display for Expression {
                 token,
                 ..
             } => write!(f, "\"{}\"", token.literal),
+
+            Expression::ArrayLiteral {
+                elements,
+                ..
+            } => {
+                let elements = elements.iter()
+                    .map(|e| e.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                write!(
+                    f,
+                    "[{}]",
+                    elements
+                )
+            },
+
+            Expression::Index { left, index, .. } => {
+                write!(f, "({}[{}])", left.to_string(), index.to_string())
+            }
         }
     }
 }
