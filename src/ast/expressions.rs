@@ -1,4 +1,4 @@
-use std::fmt;
+use std::fmt::{self, write};
 
 use super::{Node, Expression, Identifier, BlockStatement};
 
@@ -65,6 +65,11 @@ impl Node for Expression {
             } => token.literal.clone(),
 
             Expression::Index {
+                token,
+                ..
+            } => token.literal.clone(),
+
+            Expression::HashLiteral {
                 token,
                 ..
             } => token.literal.clone(),
@@ -181,6 +186,19 @@ impl fmt::Display for Expression {
 
             Expression::Index { left, index, .. } => {
                 write!(f, "({}[{}])", left.to_string(), index.to_string())
+            },
+
+            Expression::HashLiteral {
+                pairs,
+                ..
+            } => {
+                let pairs_vec = pairs.iter()
+                    .map(|(key, value)| {
+                        format!("{}: {}", key.to_string(), value.to_string())
+                    })
+                    .collect::<Vec<_>>();
+
+                write!(f, "{{{}}}", pairs_vec.join(", "))
             }
         }
     }
