@@ -2,6 +2,7 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use super::{Object};
+use super::builtin::builtins;
 
 #[derive(Debug, Clone)]
 pub struct Environment {
@@ -11,8 +12,17 @@ pub struct Environment {
 
 impl Environment {
     pub fn new() -> Rc<RefCell<Environment>> {
+        let mut store: HashMap<String, Object> = HashMap::new();
+
+        for (name, builtin) in builtins() {
+            store.insert(
+                name.to_string(), 
+                Object::Builtin(builtin)
+            );
+        }
+
         Rc::new(RefCell::new(Environment {
-            store: HashMap::new(),
+            store: store,
             outer: None,
         }))
     }

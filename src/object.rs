@@ -1,13 +1,14 @@
 use std::{cell::RefCell, fmt, rc::Rc};
-use crate::ast;
+use crate::{ast};
 
 mod environment;
+mod builtin;
+mod error;
 
 pub use environment::Environment;
+pub use error::EvalError;
 
-pub const TYPE_NAME_INTEGER: &'static str = "INTEGER";
-pub const TYPE_NAME_BOOLEAN: &'static str = "BOOLEAN";
-pub const TYPE_NAME_STRING: &'static str = "STRING";
+pub type BuiltinFunction = fn(Vec<Object>) -> Result<Object, EvalError>;
 
 #[derive(Debug, Clone)]
 pub enum Object {
@@ -22,19 +23,21 @@ pub enum Object {
         env: Rc<RefCell<Environment>>,
     },
     String(String),
+    Builtin(BuiltinFunction)
 }
 
 impl Object {
 
     pub fn type_name(&self) -> &'static str {
         match self {
-            Object::Integer(_) => TYPE_NAME_INTEGER,
-            Object::Boolean(_) => TYPE_NAME_BOOLEAN,
+            Object::Integer(_) => "INTEGER",
+            Object::Boolean(_) => "BOOLEAN",
             Object::ReturnValue(_) => "RETURN_VALUE",
             Object::Null => "NULL",
             Object::Error(_) => "ERROR",
             Object::Function { .. } => "FUNCTION",
-            Object::String(_) => TYPE_NAME_STRING,
+            Object::String(_) => "STRING",
+            Object::Builtin(_) => "BUILTIN_OBJ",
         }
     }
 
@@ -80,6 +83,7 @@ impl fmt::Display for Object {
                 )
             },
             Object::String(value) => write!(f, "{}", value),
+            Object::Builtin(_) => write!(f, "builtin function"),
         }
     }
 }
