@@ -213,6 +213,12 @@ return false;
         (TokenType::Semicolon, ";"),
         (TokenType::String, "foobar"),
         (TokenType::String, "foo bar"),
+        (TokenType::LBracket, "["),
+        (TokenType::Int, "1"),
+        (TokenType::Comma, ","),
+        (TokenType::Int, "2"),
+        (TokenType::RBracket, "]"),
+        (TokenType::Semicolon, ";"),
         (TokenType::Eof, ""),
     ];
 
