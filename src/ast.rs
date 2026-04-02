@@ -24,18 +24,18 @@ pub enum Statement {
     Let {
         token: token::Token,
         name: Identifier,
-        value: Box<Expression>,
+        value: Rc<Expression>,
     },
     // return;
     // return 10;
     Return {
         token: token::Token,
-        return_value: Option<Box<Expression>>,
+        return_value: Option<Rc<Expression>>,
     },
     // x + 10;
     Expression {
         token: token::Token, // x
-        expression: Box<Expression>, // x + 10
+        expression: Rc<Expression>, // x + 10
     },
 }
 
@@ -97,6 +97,15 @@ pub enum Expression {
         token: token::Token,
         value: String,
     },
+    ArrayLiteral {
+        token: token::Token,
+        elements: Vec<Expression>,
+    },
+    Index {
+        token: token::Token,
+        left: Rc<Expression>,
+        index: Rc<Expression>,
+    }
 }
 
 
