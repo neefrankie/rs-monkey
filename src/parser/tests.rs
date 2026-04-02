@@ -6,35 +6,26 @@ use super::precedence::{Precedence};
 use super::Parser;
 use super::errors::ParseError;
 
-fn new_identifier(value: &str) -> Expression {
-    Expression::Ident(Identifier {
-        token: Token {
-            token_type: TokenType::Ident,
-            literal: value.to_string(),
-        },
-        value: value.to_string(),
-    })
+mod utils;
+
+use utils::{
+    new_identifier,
+    new_integer,
+    new_boolean,
+    unwrap_expression_statement,
+    unwrap_program,
+};
+
+
+fn assert_statements_len(program: &Program, expected: usize) {
+    assert_eq!(
+        program.statements.len(),
+        expected,
+        "program.statements does not contain {} statement. got={}", expected,
+        program.statements.len()
+    );
 }
 
-fn new_integer(value: i64) -> Expression {
-    Expression::IntegerLiteral {
-        token: Token {
-            token_type: TokenType::Int,
-            literal: value.to_string(),
-        },
-        value: value,
-    }
-}
-
-fn new_boolean(value: bool) -> Expression {
-    Expression::Boolean {
-        token: Token {
-            token_type: if value { TokenType:: True } else { TokenType::False },
-            literal: value.to_string(),
-        },
-        value: value,
-    }
-}
 
 fn assert_identifier_expression(expr: &Expression, expected: &str) {
     match expr {
@@ -232,38 +223,7 @@ fn assert_let_statement(stmt: &Statement, expected_name: &str) {
     }
 }
 
-fn assert_no_parse_errors(result: Result<Program, Vec<ParseError>>) -> Program {
-    match result {
-        Ok(program) => program,
-        Err(errors) => {
-            eprintln!("Parser has {} errors:", errors.len());
-            for error in &errors {
-                eprint!("Parser error: {:?}", error);
-            }
-            panic!("Parser has errors");
-        },
-    }
-}
 
-fn assert_statements_len(program: &Program, expected: usize) {
-    assert_eq!(
-        program.statements.len(),
-        expected,
-        "program.statements does not contain {} statement. got={}", expected,
-        program.statements.len()
-    );
-}
-
-fn unwrap_expression_statement(stmt: &Statement) -> &Expression {
-    match stmt {
-        Statement::Expression {
-            expression,
-            .. 
-        } => expression,
-        _ => panic!("Statement is not an ExpressionStatement"),
-
-    }
-}
 
 
 #[test]
@@ -301,7 +261,7 @@ let foobar = 838383;
 ";
     let lex = Lexer::new(input.to_string());
     let mut parser = Parser::new(lex);
-    let programm = assert_no_parse_errors(parser.parse_program());
+    let programm = unwrap_program(parser.parse_program());
 
     assert_eq!(
         programm.statements.len(), 
@@ -331,7 +291,7 @@ return 993 322;
 ";
     let lex = Lexer::new(input.to_string());
     let mut parser = Parser::new(lex);
-    let program = assert_no_parse_errors(parser.parse_program());
+    let program = unwrap_program(parser.parse_program());
     
     assert_eq!(
         program.statements.len(),
@@ -356,7 +316,7 @@ fn test_identifier_expression() {
 
     let lex = Lexer::new(input.to_string());
     let mut parser = Parser::new(lex);
-    let program = assert_no_parse_errors(parser.parse_program());
+    let program = unwrap_program(parser.parse_program());
 
     assert_eq!(
         program.statements.len(),
@@ -378,7 +338,7 @@ fn test_integer_literal_expression() {
     let input = "5;";
     let lex = Lexer::new(input.to_string());
     let mut parser = Parser::new(lex);
-    let program = assert_no_parse_errors(parser.parse_program());
+    let program = unwrap_program(parser.parse_program());
 
     assert_eq!(
         program.statements.len(),
@@ -424,7 +384,7 @@ fn test_parsing_prefix_expressions() {
     ) in tests {
         let lex = Lexer::new(input.to_string());
         let mut parser = Parser::new(lex);
-        let program = assert_no_parse_errors(parser.parse_program());
+        let program = unwrap_program(parser.parse_program());
 
         assert_eq!(
             program.statements.len(),
@@ -474,7 +434,7 @@ fn test_parsing_infix_expressions() {
     ) in tests {
         let lex = Lexer::new(input.to_string());
         let mut parser = Parser::new(lex);
-        let program = assert_no_parse_errors(parser.parse_program());
+        let program = unwrap_program(parser.parse_program());
         assert_eq!(
             program.statements.len(),
             1,
@@ -529,7 +489,7 @@ fn test_operator_precedence_parsing() {
     for (input, expected) in tests {
         let l = Lexer::new(input.to_string());
         let mut p = Parser::new(l);
-        let program = assert_no_parse_errors(p.parse_program());
+        let program = unwrap_program(p.parse_program());
 
         let actual = program.to_string();
         assert_eq!(
@@ -547,7 +507,7 @@ fn test_if_expression() {
     let input = "if (x < y) { x }";
     let lex = Lexer::new(input.to_string());
     let mut parser = Parser::new(lex);
-    let program = assert_no_parse_errors(parser.parse_program());
+    let program = unwrap_program(parser.parse_program());
 
     assert_eq!(
         program.statements.len(),
@@ -596,7 +556,7 @@ fn test_function_literal_parsing() {
 
     let lex = Lexer::new(input.to_string());
     let mut parser = Parser::new(lex);
-    let program = assert_no_parse_errors(parser.parse_program());
+    let program = unwrap_program(parser.parse_program());
     assert_eq!(
         program.statements.len(),
         1,
@@ -663,7 +623,7 @@ fn test_function_parameter_parsing() {
     for (input, expected) in tests {
         let lex = Lexer::new(input.to_string());
         let mut parser = Parser::new(lex);
-        let program = assert_no_parse_errors(parser.parse_program());
+        let program = unwrap_program(parser.parse_program());
 
         let expr = program.statements[0]
             .as_expression()
@@ -697,7 +657,7 @@ fn test_call_expression_parsing() {
     let input = "add(1, 2 * 3, 4 + 5);";
     let lex = Lexer::new(input.to_string());
     let mut parser = Parser::new(lex);
-    let program = assert_no_parse_errors(parser.parse_program());
+    let program = unwrap_program(parser.parse_program());
 
     assert_eq!(
         program.statements.len(),
@@ -750,7 +710,7 @@ fn test_string_literal_expression() {
 
     let lex = Lexer::new(input.to_string());
     let mut parser = Parser::new(lex);
-    let program = assert_no_parse_errors(parser.parse_program());
+    let program = unwrap_program(parser.parse_program());
 
     assert_statements_len(&program, 1);
     let expr = unwrap_expression_statement(&program.statements[0]);
