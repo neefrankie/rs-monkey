@@ -77,6 +77,8 @@ impl Lexer {
             b')' => new_token(TokenType::RParen, self.ch),
             b'{' => new_token(TokenType::LBrace, self.ch),
             b'}' => new_token(TokenType::RBrace, self.ch),
+            b'[' => new_token(TokenType::LBracket, self.ch),
+            b']' => new_token(TokenType::RBracket, self.ch),
             b'"' => {
                 let literal = self.read_string();
                 token::Token {

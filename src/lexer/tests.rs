@@ -134,6 +134,7 @@ return false;
 10 != 9;
 "foobar"
 "foo bar"
+[1, 2];
 "#;
 
     let tests = vec![
