@@ -30,6 +30,9 @@ pub enum TokenType {
     LBrace,
     RBrace,
 
+    LBracket,
+    RBracket,
+
     // 关键字
     Function,
     Let,
