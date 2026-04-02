@@ -73,6 +73,7 @@ impl Lexer {
             b'>' => new_token(TokenType::GreaterThan, self.ch),
             b';' => new_token(TokenType::Semicolon, self.ch),
             b',' => new_token(TokenType::Comma, self.ch),
+            b':' => new_token(TokenType::Colon, self.ch),
             b'(' => new_token(TokenType::LParen, self.ch),
             b')' => new_token(TokenType::RParen, self.ch),
             b'{' => new_token(TokenType::LBrace, self.ch),

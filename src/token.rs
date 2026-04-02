@@ -24,6 +24,7 @@ pub enum TokenType {
     // 分隔符
     Comma,
     Semicolon,
+    Colon,
 
     LParen,
     RParen,
