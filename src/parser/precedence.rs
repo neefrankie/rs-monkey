@@ -11,6 +11,7 @@ pub enum Precedence {
     Product = 4,
     Prefix = 5,
     Call = 6,
+    Index = 7,
 }
 
 impl Precedence {

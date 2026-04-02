@@ -726,3 +726,37 @@ fn test_string_literal_expression() {
         _ => panic!("expression is not StringLiteral. got={}", expr),
     }
 }
+
+#[test]
+fn test_parsing_array_literals() {
+    let input = "[1, 2 * 2, 3 + 3]";
+
+    let lex = Lexer::new(input.to_string());
+    let mut parser = Parser::new(lex);
+    let program = unwrap_program(parser.parse_program());
+    let expr = unwrap_expression_statement(&program.statements[0]);
+    
+    match expr {
+        Expression::ArrayLiteral {
+            elements,
+            ..
+        } => {
+            assert_eq!(elements.len(), 3);
+            assert_integer_literal(&elements[0], 1);
+            assert_infix_expression(
+                &elements[1],
+                &new_integer(2),
+                "*".to_string(),
+                &new_integer(2)
+            );
+            assert_infix_expression(
+                &elements[2],
+                &new_integer(3),
+                "+".to_string(),
+                &new_integer(3)
+            );
+        }
+
+        _ => panic!("expression is not ArrayLiteral. got={}", expr),
+    }
+}

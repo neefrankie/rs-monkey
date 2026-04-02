@@ -1,3 +1,4 @@
+use std::rc::Rc;
 use crate::ast::{self, Statement, BlockStatement};
 use crate::token::{TokenType};
 
@@ -41,7 +42,7 @@ impl Parser {
         return Ok(Statement::Let {
             token: let_token,
             name,
-            value: Box::new(value),
+            value: Rc::new(value),
         });
     }
 
@@ -65,7 +66,7 @@ impl Parser {
                 None
             } else {
                 let expr = self.parse_expression(Precedence::Lowest)?;
-                Some(Box::new(expr))
+                Some(Rc::new(expr))
             };
 
         while !self.current_token_is(TokenType::Semicolon) {
@@ -92,7 +93,7 @@ impl Parser {
 
         return Ok(Statement::Expression {
             token: current_token,
-            expression: Box::new(expr),
+            expression: Rc::new(expr),
         });
     }
 
