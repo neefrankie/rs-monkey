@@ -86,3 +86,24 @@ fn eval_string_infix_expression(
         }),
     }
 }
+
+pub fn eval_index_expression(left: Object, index: Object) -> Result<Object, EvalError> {
+    match (&left, &index) {
+        (Object::Array(array), Object::Integer(index)) => {
+            let max_idx = array.len() as i64 - 1;
+            if *index < 0 || *index > max_idx {
+                return Err(EvalError::IndexOutOfBounds {
+                    index: *index,
+                    max_index: max_idx,
+                });
+            }
+
+            return Ok(array[*index as usize].clone());
+        },
+        _ => Err(EvalError::UnknownInfix {
+            left: left.type_name().to_string(),
+            operator: "[]".to_string(),
+            right: index.type_name().to_string(),
+        }),
+     }
+}

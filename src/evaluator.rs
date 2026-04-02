@@ -10,7 +10,7 @@ mod ident;
 
 use ident::eval_identifier;
 use prefix::eval_prefix_expression;
-use infix::eval_infix_expression;
+use infix::{eval_infix_expression, eval_index_expression};
 
 
 
@@ -243,25 +243,54 @@ pub fn eval_expression(
                 return function_result;
             }
             let function = function_result.unwrap();
-            let args_result = eval_arguments(
+            let args = eval_expressions(
                 arguments,
                 Rc::clone(&env),
-            );
-            match args_result {
-                Ok(args) => {
-                    apply_function(function, args)
-                }
-                Err(err) => {
-                    return Err(err);
-                }
+            )?;
+            apply_function(function, args)
+        },
+
+        Expression::ArrayLiteral {
+            elements ,
+            ..
+        } => {
+            let elements = eval_expressions(
+                elements, 
+                Rc::clone(&env)
+            )?;
+
+            if elements.len() == 1 {
+                return Ok(elements[0].clone());
             }
+
+            return Ok(Object::Array(elements));
+        },
+
+        Expression::Index { 
+            left, 
+            index,
+            ..
+        } => {
+            let left_value = eval_expression(
+                left,
+                Rc::clone(&env),
+            )?;
+            let index_value = eval_expression(
+                index,
+                Rc::clone(&env),
+            )?;
+
+            return eval_index_expression(
+                left_value,
+                index_value,
+            );
         }
 
     }
 }
 
 
-fn eval_arguments(
+fn eval_expressions(
     expressions: &Vec<Expression>,
     env: Rc<RefCell<Environment>>,
 ) -> Result<Vec<Object>, EvalError> {
