@@ -51,7 +51,9 @@ impl Parser {
 
             TokenType::String => self.parse_string_literal(),
 
-            TokenType::LBrace => self.parse_array_literal(),
+            TokenType::LBracket => self.parse_array_literal(),
+
+            TokenType::LBrace => self.parse_hash_literal(),
 
             _ => Err(ParseError::NoPrefixParseFn {
                 token_type
@@ -237,6 +239,39 @@ impl Parser {
         return Ok(Expression::ArrayLiteral {
             token: self.current_token.clone(),
             elements: self.parse_expression_list(TokenType::RBracket)?,
+        });
+    }
+
+    fn parse_hash_literal(&mut self) -> Result<Expression, ParseError> {
+        let token = self.current_token.clone();
+        let mut pairs: Vec<(Expression, Expression)> = Vec::new();
+
+        while !self.peek_token_is(TokenType::RBrace) {
+            // Skip {.
+            self.next_token();
+            // Stops before :
+            let key = self.parse_expression(Precedence::Lowest)?;
+            
+            // Move to :
+            self.expect_peek(TokenType::Colon)?;
+            // Skip :
+            self.next_token();
+            // Parse value
+            let value = self.parse_expression(Precedence::Lowest)?;
+            pairs.push((key, value));
+
+            if self.peek_token_is(TokenType::RBrace) {
+                continue;
+            }
+
+            self.expect_peek(TokenType::Comma)?;
+        }
+
+        self.expect_peek(TokenType::RBrace)?;
+
+        return Ok(Expression::HashLiteral {
+            token: token,
+            pairs: pairs,
         });
     }
 

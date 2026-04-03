@@ -95,7 +95,7 @@ impl Parser {
             Ok(())
         } else {
             Err(ParseError::UnexpectedToken {
-                expected: TokenType::Assign, 
+                expected: token_type, 
                 got: self.current_token.token_type,
             })
         }
