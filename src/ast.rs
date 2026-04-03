@@ -1,5 +1,5 @@
 use crate::token;
-use std::{collections::HashMap, rc::Rc};
+use std::{rc::Rc};
 
 mod statements;
 mod expressions;
@@ -108,7 +108,7 @@ pub enum Expression {
     },
     HashLiteral {
         token: token::Token,
-        pairs: HashMap<Expression, Expression>,
+        pairs: Vec<(Expression, Expression)>,
     },
 }
 
