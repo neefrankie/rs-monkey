@@ -44,67 +44,128 @@ impl Lexer {
     pub fn next_token(&mut self) -> token::Token {
         self.skip_whitespace();
 
-        let tok = match self.ch {
+        match self.ch {
             b'=' => {
+                // = could be assignment or comparison
                 if self.peek_char() == b'=' {
-                    let ch = self.ch;
-                    self.read_char();
-                    let literal = char::from(ch).to_string() + &char::from(self.ch).to_string();
-                    token::Token{ token_type: TokenType::Eq, literal }
+                    let first = self.ch;
+                    return self.emit_double_char_token(
+                        TokenType::Eq, 
+                        first,
+                    );
                 } else {
-                    new_token(TokenType::Assign, self.ch)
+                    return self.emit_single_char_token(TokenType::Assign);
                 }
             },
-            b'+' => new_token(TokenType::Plus, self.ch),
-            b'-' => new_token(TokenType::Minus, self.ch),
+            b'+' => {
+                return self.emit_single_char_token(TokenType::Plus);
+            },
+            b'-' => {
+                return self.emit_single_char_token(TokenType::Minus);
+            },
             b'!' => {
                 if self.peek_char() == b'=' {
-                    let ch = self.ch;
-                    self.read_char();
-                    let literal = char::from(ch).to_string() + &char::from(self.ch).to_string();
-                    token::Token{ token_type: TokenType::NotEq, literal }
+                    let first = self.ch;
+                    return self.emit_double_char_token(
+                        TokenType::NotEq, 
+                        first
+                    );
                 } else {
-                    new_token(TokenType::Bang, self.ch)
+                    return self.emit_single_char_token(TokenType::Bang)
                 }
             },
-            b'/' => new_token(TokenType::Slash, self.ch),
-            b'*' => new_token(TokenType::Asterisk, self.ch),
-            b'<' => new_token(TokenType::LessThan, self.ch),
-            b'>' => new_token(TokenType::GreaterThan, self.ch),
-            b';' => new_token(TokenType::Semicolon, self.ch),
-            b',' => new_token(TokenType::Comma, self.ch),
-            b':' => new_token(TokenType::Colon, self.ch),
-            b'(' => new_token(TokenType::LParen, self.ch),
-            b')' => new_token(TokenType::RParen, self.ch),
-            b'{' => new_token(TokenType::LBrace, self.ch),
-            b'}' => new_token(TokenType::RBrace, self.ch),
-            b'[' => new_token(TokenType::LBracket, self.ch),
-            b']' => new_token(TokenType::RBracket, self.ch),
+            b'/' => {
+                return self.emit_single_char_token(TokenType::Slash);
+            },
+            b'*' => {
+                return self.emit_single_char_token(TokenType::Asterisk);
+            },
+            b'<' => {
+                return self.emit_single_char_token(TokenType::LessThan);
+            },
+            b'>' => {
+                return self.emit_single_char_token(TokenType::GreaterThan);
+            },
+            b';' => {
+                return self.emit_single_char_token(TokenType::Semicolon);
+            },
+            b',' => {
+                return self.emit_single_char_token(TokenType::Comma);
+            },
+            b':' => {
+                return self.emit_single_char_token(TokenType::Colon);
+            },
+            b'(' => {
+                return self.emit_single_char_token(TokenType::LParen);
+            },
+            b')' => {
+                return self.emit_single_char_token(TokenType::RParen);
+            },
+            b'{' => {
+                return self.emit_single_char_token(TokenType::LBrace);
+            },
+            b'}' => {
+                return self.emit_single_char_token(TokenType::RBrace);
+            },
+            b'[' => {
+                return self.emit_single_char_token(TokenType::LBracket);
+            },
+            b']' => {
+                return self.emit_single_char_token(TokenType::RBracket);
+            },
             b'"' => {
                 let literal = self.read_string();
-                token::Token {
+                return token::Token {
                     token_type: TokenType::String, 
                     literal,
                 }
             }
-            0 => token::Token { token_type: TokenType::Eof, literal: String::new() },
+            0 => {
+                return token::Token {
+                    token_type: TokenType::Eof,
+                    literal: String::new()
+                };
+            },
             _ => {
                 if is_letter(self.ch) {
                     let literal = self.read_identifier();
                     let token_type = token::lookup_ident(&literal);
-                    // 提前退出
-                    return token::Token { token_type, literal };
+                    return token::Token {
+                        token_type,
+                        literal
+                    };
                 } if is_digit(self.ch) {
                     let literal = self.read_number();
-                    return token::Token { token_type: TokenType::Int, literal };
+                    return token::Token {
+                        token_type: TokenType::Int,
+                        literal
+                    };
                 } else {
-                    new_token(TokenType::Illegal, self.ch)
+                    return self.emit_single_char_token(TokenType::Illegal);
                 }
-                
             },
-        };
+        }
+    }
+
+    fn emit_single_char_token(&mut self, token_type: TokenType) -> token::Token {
+        let ch = self.ch;
+        // Move position to the char after current token.
         self.read_char();
-        tok
+       
+        token::Token {
+            token_type: token_type,
+            literal: char::from(ch).to_string(),
+        }
+    }
+
+    fn emit_double_char_token(&mut self, token_type: TokenType, first: u8) -> token::Token {
+        self.read_char(); // 读取第二个字符
+        let second = self.ch;
+        self.read_char(); // 移动到 token 之后
+        token::Token {
+            token_type,
+            literal: format!("{}{}", char::from(first), char::from(second)),
+        }
     }
 
     fn read_identifier(&mut self) -> String {
@@ -133,16 +194,19 @@ impl Lexer {
     }
 
     fn read_string(&mut self) -> String {
-        // Move position one step after starting`"`
+        // Move to string start. Skip starting quote.
         self.read_char();
-        let position = self.position;
+        let start = self.position;
         while self.ch != b'"' && self.ch != 0 {
             self.read_char();
         }
         // Now char points to ending `"`.
-        // We could slice between "..."
-        // Caller must move to next char
-        String::from_utf8_lossy(&self.input[position..self.position]).to_string()
+        // For example, slicing `"hello"  starts at 1 and ends at 6.
+        let end = self.position;
+        // Skip ending quote.
+        self.read_char();
+        
+        String::from_utf8_lossy(&self.input[start..end]).to_string()
     }
 }
 
