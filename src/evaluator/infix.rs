@@ -100,6 +100,13 @@ pub fn eval_index_expression(left: Object, index: Object) -> Result<Object, Eval
 
             return Ok(array[*index as usize].clone());
         },
+        (Object::Hash(pairs), _) => {
+            let key = index.hash_key()?;
+            if let Some(pair) = pairs.get(&key) {
+                return Ok(pair.value.clone());
+            }
+            return Ok(Object::Null);
+        },
         _ => Err(EvalError::UnknownInfix {
             left: left.type_name().to_string(),
             operator: "[]".to_string(),

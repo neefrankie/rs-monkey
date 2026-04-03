@@ -1,8 +1,10 @@
+use core::hash;
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::ast::{self, Statement, Expression};
-use crate::object::{Object, Environment, EvalError};
+use crate::object::{self, Environment, EvalError, Object};
 
 mod infix;
 mod prefix;
@@ -110,20 +112,13 @@ pub fn eval_stmt(
             let result = eval_expression(
                 value,
                 Rc::clone(&env),
+            )?;
+            // Save to env as a: 5
+            env.borrow_mut().set(
+                name.value.clone(), 
+                result.clone(),
             );
-            match result {
-                Ok(val) => {
-                    // Save a: 5
-                    env.borrow_mut().set(
-                        name.value.clone(), 
-                        val.clone(),
-                    );
-                    return Ok(val);
-                }
-                Err(err) => {
-                    return Err(err);
-                }
-            }
+            return Ok(result);
         }
     }
 }
@@ -266,11 +261,22 @@ pub fn eval_expression(
             return Ok(Object::Array(elements));
         },
 
+        // This handles hash literal like {"foo": "bar"}["foo"]
+        Expression::HashLiteral { pairs , ..} => {
+            return eval_hash_literal(
+                pairs,
+                Rc::clone(&env),
+            );
+        },
+
+        // Evaluate both array[1] and hash["foo"]
         Expression::Index { 
             left, 
             index,
             ..
         } => {
+            // Evaluate left value. Most of time this will be 
+            // retrieved from env as set by evaluating the Let statement.
             let left_value = eval_expression(
                 left,
                 Rc::clone(&env),
@@ -284,7 +290,7 @@ pub fn eval_expression(
                 left_value,
                 index_value,
             );
-        }
+        },
 
     }
 }
@@ -391,6 +397,33 @@ fn eval_if_expression(
             }
         }
     }
+}
+
+fn eval_hash_literal(
+    pairs: &Vec<(Expression, Expression)>,
+    env: Rc<RefCell<Environment>>,
+) -> Result<Object, EvalError> {
+    let mut ret: HashMap<object::HashKey, object::HashPair> = HashMap::new();
+
+    for (key_expr, value_expr) in pairs {
+        let key = eval_expression(
+            key_expr,
+            Rc::clone(&env),
+        )?;
+        let hash_key = key.hash_key()?;
+
+        let value = eval_expression(
+            value_expr,
+            Rc::clone(&env),
+        )?;
+
+        ret.insert(hash_key, object::HashPair {
+            key,
+            value,
+        });
+    }
+
+    Ok(Object::Hash(ret))
 }
 
 fn is_truthy(obj: Object) -> bool {
