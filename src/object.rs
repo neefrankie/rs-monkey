@@ -1,4 +1,4 @@
-use std::{cell::RefCell, fmt, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, fmt, rc::Rc};
 use crate::{ast};
 
 mod environment;
@@ -9,6 +9,19 @@ pub use environment::Environment;
 pub use error::EvalError;
 
 pub type BuiltinFunction = fn(Vec<Object>) -> Result<Object, EvalError>;
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub enum HashKey {
+    Integer(i64),
+    Boolean(bool),
+    String(String),
+}
+
+#[derive(Debug, Clone)]
+pub struct HashPair {
+    pub key: Object,
+    pub value: Object,
+}
 
 #[derive(Debug, Clone)]
 pub enum Object {
@@ -25,21 +38,40 @@ pub enum Object {
     String(String),
     Builtin(BuiltinFunction),
     Array(Vec<Object>),
+    Hash(HashMap<HashKey, HashPair>),
 }
 
 impl Object {
 
-    pub fn type_name(&self) -> &'static str {
+    pub fn type_name(&self) -> String {
         match self {
-            Object::Integer(_) => "INTEGER",
-            Object::Boolean(_) => "BOOLEAN",
-            Object::ReturnValue(_) => "RETURN_VALUE",
-            Object::Null => "NULL",
-            Object::Error(_) => "ERROR",
-            Object::Function { .. } => "FUNCTION",
-            Object::String(_) => "STRING",
-            Object::Builtin(_) => "BUILTIN_OBJ",
-            Object::Array(_) => "ARRAY",
+            Object::Integer(_) => "INTEGER".to_string(),
+            Object::Boolean(_) => "BOOLEAN".to_string(),
+            Object::ReturnValue(_) => "RETURN_VALUE".to_string(),
+            Object::Null => "NULL".to_string(),
+            Object::Error(_) => "ERROR".to_string(),
+            Object::Function { .. } => "FUNCTION".to_string(),
+            Object::String(_) => "STRING".to_string(),
+            Object::Builtin(_) => "BUILTIN_OBJ".to_string(),
+            Object::Array(_) => "ARRAY".to_string(),
+            Object::Hash(_) => "HASH".to_string(),
+        }
+    }
+
+    pub fn hash_key(&self) -> Result<HashKey, EvalError> {
+        match self {
+            Object::Boolean(value) => {
+                Ok(HashKey::Boolean(*value))
+            },
+            Object::Integer(value) => {
+                Ok(HashKey::Integer(*value))
+            },
+            Object::String(value) => {
+                Ok(HashKey::String(value.clone()))
+            },
+            _ => Err(EvalError::InvalidHashKey(
+                self.type_name()
+            )),
         }
     }
 
@@ -98,6 +130,20 @@ impl fmt::Display for Object {
                     f,
                     "[{}]",
                     elements
+                )
+            },
+            Object::Hash(hash) => {
+                let pairs = hash.values()
+                    .map(
+                        |pair| format!("{}: {}", pair.key, pair.value)
+                    )
+                    .collect::<Vec<_>>()
+                    .join(", ");
+
+                write!(
+                    f,
+                    "{{{}}}",
+                    pairs
                 )
             },
         }

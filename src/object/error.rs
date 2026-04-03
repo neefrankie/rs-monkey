@@ -26,6 +26,7 @@ pub enum EvalError {
         index: i64,
         max_index: i64,
     },
+    InvalidHashKey(String),
 }
 
 
@@ -63,6 +64,10 @@ impl fmt::Display for EvalError {
 
             EvalError::IndexOutOfBounds { index, max_index } => {
                 write!(f, "index out of bounds: index {}, max index {}", index, max_index)
+            },
+
+            EvalError::InvalidHashKey(key) => {
+                write!(f, "unusable as hash key: {}", key)
             }
         }
     }
