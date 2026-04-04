@@ -1,3 +1,5 @@
+use core::fmt;
+
 use crate::token::{self, TokenType};
 
 // In Rust, we use u8 to represent a byte.
@@ -21,6 +23,14 @@ impl Lexer {
         };
         lexer.read_char(); // Move to first character
         lexer
+    }
+
+    pub fn current_position(&self) -> usize {
+        self.position
+    }
+
+    pub fn current_char(&self) -> u8 {
+        self.ch
     }
 
     fn read_char(&mut self) {
@@ -121,6 +131,7 @@ impl Lexer {
                 }
             }
             0 => {
+                self.read_char();
                 return token::Token {
                     token_type: TokenType::Eof,
                     literal: String::new()
@@ -216,6 +227,16 @@ fn is_letter(ch: u8) -> bool {
 
 fn is_digit(ch: u8) -> bool {
     ch.is_ascii_digit()
+}
+
+impl fmt::Display for Lexer {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}[{}]->{}",
+            char::from(self.ch),
+            self.position,
+            self.read_position,
+        )
+    }
 }
 
 #[cfg(test)]
