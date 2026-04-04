@@ -22,9 +22,9 @@ pub struct Program {
 pub enum Statement {
     // let x = 5;
     Let {
-        token: token::Token,
-        name: Identifier,
-        value: Rc<Expression>,
+        token: token::Token, // Let
+        name: Identifier, // 变量名
+        value: Rc<Expression>, // 等号右侧的表达式
     },
     // return;
     // return 10;
