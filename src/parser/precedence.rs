@@ -29,7 +29,9 @@ impl Precedence {
             TokenType::Slash | 
             TokenType::Asterisk => Some(Precedence::Product),
 
-            TokenType::LParen => Some(Precedence::Call),
+            TokenType::LeftParen => Some(Precedence::Call),
+
+            TokenType::LeftBracket => Some(Precedence::Index),
             
             _ => None,
         }

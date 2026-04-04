@@ -43,7 +43,7 @@ impl Parser {
             TokenType::True |
             TokenType::False => self.parse_boolean(),
 
-            TokenType::LParen => self.parse_grouped_expression(),
+            TokenType::LeftParen => self.parse_grouped_expression(),
 
             TokenType::If => self.parse_if_expression(),
 
@@ -51,9 +51,9 @@ impl Parser {
 
             TokenType::String => self.parse_string_literal(),
 
-            TokenType::LBracket => self.parse_array_literal(),
+            TokenType::LeftBracket => self.parse_array_literal(),
 
-            TokenType::LBrace => self.parse_hash_literal(),
+            TokenType::LeftBrace => self.parse_hash_literal(),
 
             _ => Err(ParseError::NoPrefixParseFn {
                 token_type
@@ -109,7 +109,7 @@ impl Parser {
 
         let exp = self.parse_expression(Precedence::Lowest)?;
 
-        self.expect_peek(TokenType::RParen)?;
+        self.expect_peek(TokenType::RightParen)?;
 
         return Ok(exp);
     }
@@ -123,15 +123,15 @@ impl Parser {
         let if_token = self.current_token.clone();
 
         // Move to (.
-        self.expect_peek(TokenType::LParen)?;
+        self.expect_peek(TokenType::LeftParen)?;
         // Move to x.
         self.next_token();
         // x > y
         let condition = self.parse_expression(Precedence::Lowest)?;
         // Move to )
-        self.expect_peek(TokenType::RParen)?;
+        self.expect_peek(TokenType::RightParen)?;
         // Move to {.
-        self.expect_peek(TokenType::LBrace)?;
+        self.expect_peek(TokenType::LeftBrace)?;
 
         let consequence = self.parse_block_statement()?;
 
@@ -144,7 +144,7 @@ impl Parser {
             self.next_token();
             // Next token should be an opening brace
             // 前移 Skip the opening brace
-            self.expect_peek(TokenType::LBrace)?;
+            self.expect_peek(TokenType::LeftBrace)?;
 
             let alt = self.parse_block_statement()?;
 
@@ -177,11 +177,11 @@ impl Parser {
         // Current token: fn
         let token = self.current_token.clone();
         // Current token: (
-        self.expect_peek(TokenType::LParen)?;
+        self.expect_peek(TokenType::LeftParen)?;
 
         let parameters = self.parse_function_parameters()?;
 
-        self.expect_peek(TokenType::LBrace)?;
+        self.expect_peek(TokenType::LeftBrace)?;
 
         let body = self.parse_block_statement()?;
 
@@ -196,7 +196,7 @@ impl Parser {
         // Current token: (
         let mut identifiers: Vec<Identifier> = vec![];
         
-        if self.peek_token_is(TokenType::RParen) {
+        if self.peek_token_is(TokenType::RightParen) {
             // Skip ).
             self.next_token();
             return Ok(identifiers);
@@ -223,7 +223,7 @@ impl Parser {
             identifiers.push(ident);
         }
         // Expect ).
-        self.expect_peek(TokenType::RParen)?;
+        self.expect_peek(TokenType::RightParen)?;
 
         return Ok(identifiers);
     }
@@ -238,7 +238,7 @@ impl Parser {
     fn parse_array_literal(&mut self) -> Result<Expression, ParseError> {
         return Ok(Expression::ArrayLiteral {
             token: self.current_token.clone(),
-            elements: self.parse_expression_list(TokenType::RBracket)?,
+            elements: self.parse_expression_list(TokenType::RightBracket)?,
         });
     }
 
@@ -246,7 +246,7 @@ impl Parser {
         let token = self.current_token.clone();
         let mut pairs: Vec<(Expression, Expression)> = Vec::new();
 
-        while !self.peek_token_is(TokenType::RBrace) {
+        while !self.peek_token_is(TokenType::RightBrace) {
             // Skip {.
             self.next_token();
             // Stops before :
@@ -260,14 +260,14 @@ impl Parser {
             let value = self.parse_expression(Precedence::Lowest)?;
             pairs.push((key, value));
 
-            if self.peek_token_is(TokenType::RBrace) {
+            if self.peek_token_is(TokenType::RightBrace) {
                 continue;
             }
 
             self.expect_peek(TokenType::Comma)?;
         }
 
-        self.expect_peek(TokenType::RBrace)?;
+        self.expect_peek(TokenType::RightBrace)?;
 
         return Ok(Expression::HashLiteral {
             token: token,
@@ -289,9 +289,9 @@ impl Parser {
             TokenType::LessThan |
             TokenType::GreaterThan => self.parse_infix_expression(left),
 
-            TokenType::LParen => self.parse_call_expression(left),
+            TokenType::LeftParen => self.parse_call_expression(left),
 
-            TokenType::LBracket => self.parse_index_expression(left),
+            TokenType::LeftBracket => self.parse_index_expression(left),
 
             _ => Err(ParseError::NoInfixParseFn {
                 token_type
@@ -327,7 +327,7 @@ impl Parser {
         // parenthesis is an infix operator.
         // current token points to '('
         let token = self.current_token.clone();
-        let args = self.parse_expression_list(TokenType::RParen)?;
+        let args = self.parse_expression_list(TokenType::RightParen)?;
         
         return Ok(Expression::Call {
             token,
@@ -336,34 +336,34 @@ impl Parser {
         })
     }
 
-    fn parse_call_arguments(&mut self) -> Result<Vec<Expression>, ParseError> {
-        // current token points to '('
-        let mut args: Vec<Expression> = Vec::new();
+    // fn parse_call_arguments(&mut self) -> Result<Vec<Expression>, ParseError> {
+    //     // current token points to '('
+    //     let mut args: Vec<Expression> = Vec::new();
 
-        // Empty arguments.
-        if self.peek_token_is(TokenType::RParen) {
-            self.next_token();
-            return Ok(args);
-        }
-        // Skip '('
-        self.next_token();
-        let arg = self.parse_expression(Precedence::Lowest)?;
-        args.push(arg);
+    //     // Empty arguments.
+    //     if self.peek_token_is(TokenType::RParen) {
+    //         self.next_token();
+    //         return Ok(args);
+    //     }
+    //     // Skip '('
+    //     self.next_token();
+    //     let arg = self.parse_expression(Precedence::Lowest)?;
+    //     args.push(arg);
         
-        while self.peek_token_is(TokenType::Comma) {
-            // Skip ','
-            self.next_token();
-            // Check if next token is ) here?
-            // Next argument.
-            self.next_token();
-            let arg = self.parse_expression(Precedence::Lowest)?;
-            args.push(arg);
-        }
+    //     while self.peek_token_is(TokenType::Comma) {
+    //         // Skip ','
+    //         self.next_token();
+    //         // Check if next token is ) here?
+    //         // Next argument.
+    //         self.next_token();
+    //         let arg = self.parse_expression(Precedence::Lowest)?;
+    //         args.push(arg);
+    //     }
 
-        self.expect_peek(TokenType::RParen)?;
+    //     self.expect_peek(TokenType::RParen)?;
 
-        Ok(args)
-    }
+    //     Ok(args)
+    // }
 
     fn parse_expression_list(&mut self, end: TokenType) -> Result<Vec<Expression>, ParseError> {
         let mut list: Vec<Expression> = Vec::new();
@@ -393,7 +393,7 @@ impl Parser {
         let token = self.current_token.clone();
         self.next_token();
         let index = self.parse_expression(Precedence::Lowest)?;
-        self.expect_peek(TokenType::RBracket)?;
+        self.expect_peek(TokenType::RightBracket)?;
 
         return Ok(Expression::Index {
             token,

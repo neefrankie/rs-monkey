@@ -62,7 +62,7 @@ impl Parser {
         // 如果遇到分号、EOF 或右花括号（函数体结束），说明没有返回值
         let return_value = if self.current_token_is(TokenType::Semicolon)
             || self.current_token_is(TokenType::Eof)
-            || self.current_token_is(TokenType::RBrace) {
+            || self.current_token_is(TokenType::RightBrace) {
                 None
             } else {
                 let expr = self.parse_expression(Precedence::Lowest)?;
@@ -106,7 +106,7 @@ impl Parser {
         // 反复调用 parse_statement，知道遇见右大括号 }
         // 或 TokenType::Eof，前者表示到了块语句的末尾，
         // 后者表示没有要解析的词法单元。
-        while !self.current_token_is(TokenType::RBrace) && !self.current_token_is(TokenType::Eof) {
+        while !self.current_token_is(TokenType::RightBrace) && !self.current_token_is(TokenType::Eof) {
             let statement = self.parse_statement()?;
             statements.push(statement);
             self.next_token();

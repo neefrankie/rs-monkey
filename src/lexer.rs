@@ -96,22 +96,22 @@ impl Lexer {
                 return self.emit_single_char_token(TokenType::Colon);
             },
             b'(' => {
-                return self.emit_single_char_token(TokenType::LParen);
+                return self.emit_single_char_token(TokenType::LeftParen);
             },
             b')' => {
-                return self.emit_single_char_token(TokenType::RParen);
+                return self.emit_single_char_token(TokenType::RightParen);
             },
             b'{' => {
-                return self.emit_single_char_token(TokenType::LBrace);
+                return self.emit_single_char_token(TokenType::LeftBrace);
             },
             b'}' => {
-                return self.emit_single_char_token(TokenType::RBrace);
+                return self.emit_single_char_token(TokenType::RightBrace);
             },
             b'[' => {
-                return self.emit_single_char_token(TokenType::LBracket);
+                return self.emit_single_char_token(TokenType::LeftBracket);
             },
             b']' => {
-                return self.emit_single_char_token(TokenType::RBracket);
+                return self.emit_single_char_token(TokenType::RightBracket);
             },
             b'"' => {
                 let literal = self.read_string();
@@ -207,13 +207,6 @@ impl Lexer {
         self.read_char();
         
         String::from_utf8_lossy(&self.input[start..end]).to_string()
-    }
-}
-
-fn new_token(kind: token::TokenType, ch: u8) -> token::Token {
-    token::Token {
-        token_type: kind,
-        literal: char::from(ch).to_string(),
     }
 }
 

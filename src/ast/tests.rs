@@ -69,7 +69,7 @@ fn new_ident_token(value: &str) -> Token {
 
 fn new_left_brace_token() -> Token {
     Token {
-        token_type: TokenType::RBrace,
+        token_type: TokenType::RightBrace,
         literal: "{".to_string(),
     }
 }

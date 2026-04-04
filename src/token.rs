@@ -22,31 +22,31 @@ pub enum TokenType {
     NotEq, // !=
 
     // 分隔符
-    Comma,
-    Semicolon,
-    Colon,
+    Comma, // ,
+    Semicolon, // ;
+    Colon, // :
 
-    LParen,
-    RParen,
-    LBrace,
-    RBrace,
+    LeftParen, // (
+    RightParen, // )
+    LeftBrace, // {
+    RightBrace, // }
 
-    LBracket,
-    RBracket,
+    LeftBracket, // [
+    RightBracket, // ]
 
     // 关键字
-    Function,
-    Let,
-    True,
-    False,
-    If,
-    Else,
-    Return,
+    Function, // fn
+    Let, // let
+    True, // true
+    False, // false
+    If, // if
+    Else, // else
+    Return, // return
 
-    String,
+    String, // "string"
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Token {
     pub token_type: TokenType,
     pub literal: String,

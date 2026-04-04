@@ -247,7 +247,7 @@ fn test_precedence_from_token() {
         Some(Precedence::Product)
     );
     assert_eq!(
-        Precedence::from_token(TokenType::LBrace),
+        Precedence::from_token(TokenType::LeftBrace),
         None
     );
 }
