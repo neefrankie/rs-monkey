@@ -15,8 +15,8 @@ use precedence::{Precedence};
 
 pub struct Parser {
     lexer: lexer::Lexer,
-    current_token: token::Token,
-    peek_token: token::Token,
+    current_token: token::Token, // 输入中的当前此法单元
+    peek_token: token::Token, // 下一个词法单元
 }
 
 impl Parser {
@@ -24,10 +24,8 @@ impl Parser {
     /// Initializes `current_token` and `peek_token` by reading the first two tokens.
     pub fn new(mut lexer: lexer::Lexer) -> Self {
         let current_token = lexer.next_token();
-        println!("New Parser: current_token: {:?}", current_token);
 
         let peek_token = lexer.next_token();
-        println!("New Parser: peek_token: {:?}\n", peek_token);
 
         let parser = Parser {
             lexer: lexer,
@@ -40,9 +38,11 @@ impl Parser {
     }
 
     pub fn next_token(&mut self) {
+        // When current token is EOF, peek token is next EOF.
+        // Lexer.position point to the third EOF,
+        // while Lexer.read_position points to the fourth EOF.
         self.current_token = self.peek_token.clone();
         self.peek_token = self.lexer.next_token();
-        println!("Parser: \n\tcurrent_token: {:?}, \n\tpeek_token: {:?}\n", self.current_token, self.peek_token)
     }
 
     pub fn parse_program(&mut self) -> Result<ast::Program, Vec<ParseError>> { 
