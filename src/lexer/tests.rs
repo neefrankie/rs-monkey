@@ -405,34 +405,20 @@ fn test_brackets() {
 
 #[test]
 fn test_string_literal() {
-    let input = r#"let foo = "foobar";"#;
+    let input = r#""foobar";"#;
 
     let mut lexer = Lexer::new(input.to_string());
     
-    assert_eq!(lexer.next_token(), token::Token {
-        token_type: TokenType::Let,
-        literal: "let".to_string(),
-    });
-
-    assert_eq!(lexer.next_token(), token::Token {
-        token_type: TokenType::Ident,
-        literal: "foo".to_string(),
-    });
-
-    assert_eq!(lexer.next_token(), token::Token {
-        token_type: TokenType::Assign,
-        literal: "=".to_string(),
-    });
+    assert_eq!(lexer.position, 0);
+    assert_eq!(lexer.ch, b'"');
 
     assert_eq!(lexer.next_token(), token::Token {
         token_type: TokenType::String,
         literal: "foobar".to_string(),
     });
 
-    assert_eq!(lexer.next_token(), token::Token {
-        token_type: TokenType::Semicolon,
-        literal: ";".to_string(),
-    });
+    assert_eq!(lexer.position, 8);
+    assert_eq!(lexer.ch, b';');
 }
 
 #[test]
@@ -620,6 +606,7 @@ fn test_array_literal() {
         literal: "]".to_string(),
     });
 }
+
 #[test]
 fn test_array_index() {
     let input = "my_array[1]";
