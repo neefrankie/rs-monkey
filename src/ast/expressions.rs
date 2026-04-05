@@ -205,46 +205,7 @@ impl fmt::Display for Expression {
 }
 
 impl Expression {
-    pub fn as_identifier(&self) -> Option<&Identifier> {
-        match self {
-            Expression::Ident(identifier) => Some(identifier),
-            _ => None,
-        }
-    }
 
-    pub fn as_integral(&self) -> Option<i64> {
-        match self {
-            Expression::IntegerLiteral {
-                value,
-                ..
-            } => Some(*value),
-            _ => None,
-        }
-    }
-
-    pub fn as_boolean(&self) -> Option<bool> {
-        match self {
-            Expression::Boolean {
-                value,
-                ..
-            } => Some(*value),
-            _ => None,
-        }
-    }
-
-    pub fn as_prefix(&self) -> Option<(String, &Expression)> {
-        match self {
-            Expression::Prefix {
-                operator,
-                right,
-                ..
-            } => Some((
-                operator.clone(),
-                right.as_ref(),
-            )),
-            _ => None,
-        }
-    }
 
     pub fn as_infix(&self) -> Option<(&Expression, String, &Expression)> {
         match self {
