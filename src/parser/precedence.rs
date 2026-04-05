@@ -5,13 +5,13 @@ use crate::token::TokenType;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Precedence {
     Lowest = 0,
-    Equal = 1,
-    LessGreater = 2,
-    Sum = 3,
-    Product = 4,
-    Prefix = 5,
-    Call = 6,
-    Index = 7,
+    Equal = 1, // ==, !=
+    LessGreater = 2, // <, >
+    Sum = 3, // +, -
+    Product = 4, // *, /
+    Prefix = 5, // -x, !x
+    Call = 6, // a()
+    Index = 7, // array[index]
 }
 
 impl Precedence {
