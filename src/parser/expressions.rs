@@ -8,13 +8,7 @@ use super::Parser;
 
 impl Parser {
     pub(super) fn parse_expression(&mut self, precedence: Precedence) -> Result<Expression, ParseError> {
-        println!("parse_expression({:?})\n", precedence);
-
-        let mut left_expr = self.parse_prefix(self.current_token.token_type)?;
-
-        println!("parse_expression left_expr: {}\n", left_expr);
-
-        println!("parse_expression start nesting: precedence: {:?} < {:?}", precedence, self.peek_precedence());
+        let mut left_expr = self.dispatch_prefix_parsing(self.current_token.token_type)?;
 
         while !self.peek_token_is(TokenType::Semicolon) && precedence < self.peek_precedence() {
             self.next_token();
@@ -23,33 +17,30 @@ impl Parser {
                 left_expr
             )?;
         }
-        
-        println!("\tnest infix end");
 
         return Ok(left_expr);
     }
 
     // This function plays the role of registerPrefix(TokenType, func) in Go version.
-    fn parse_prefix(&mut self, token_type: TokenType) -> Result<Expression, ParseError> {
-        print!("parse_prefix\n");
+    fn dispatch_prefix_parsing(&mut self, token_type: TokenType) -> Result<Expression, ParseError> {
         match token_type {
-            TokenType::Ident => self.parse_identifier(),
+            TokenType::Ident => Ok(self.parse_identifier()),
 
             TokenType::Int => self.parse_integer(),
 
+            TokenType::True |
+            TokenType::False => Ok(self.parse_boolean()),
+
+            TokenType::String => Ok(self.parse_string_literal()),
+
             TokenType::Bang |
             TokenType::Minus => self.parse_prefix_expression(),
-
-            TokenType::True |
-            TokenType::False => self.parse_boolean(),
 
             TokenType::LeftParen => self.parse_grouped_expression(),
 
             TokenType::If => self.parse_if_expression(),
 
             TokenType::Function => self.parse_function_literal(),
-
-            TokenType::String => self.parse_string_literal(),
 
             TokenType::LeftBracket => self.parse_array_literal(),
 
@@ -61,14 +52,16 @@ impl Parser {
         }
     }
 
-    fn parse_identifier(&mut self) -> Result<Expression, ParseError> {
-        return Ok(Expression::Ident(ast::Identifier {
+    // === Simple prefix parsing ===
+
+    pub fn parse_identifier(&mut self) -> Expression {
+        return Expression::Ident(ast::Identifier {
             token: self.current_token.clone(),
             value: self.current_token.literal.clone(),
-        }));
+        });
     }
 
-    fn parse_integer(&mut self) -> Result<Expression, ParseError> {
+    pub fn parse_integer(&mut self) -> Result<Expression, ParseError> {
         let Ok(value) = self.current_token.literal.parse::<i64>() else {
             return Err(ParseError::ExpectedInt {
                 got: self.current_token.literal.clone(),
@@ -81,15 +74,28 @@ impl Parser {
         });
     }
 
-    fn parse_boolean(&mut self) -> Result<Expression, ParseError> { 
-        return Ok(Expression::Boolean {
+    pub fn parse_boolean(&mut self) -> Expression { 
+        return Expression::Boolean {
             token: self.current_token.clone(),
             value: self.current_token_is(TokenType::True),
-        });
+        };
     }
 
-    fn parse_prefix_expression(&mut self) -> Result<Expression, ParseError> {
-        println!("parse_prefix_expression\n");
+    pub fn parse_string_literal(&mut self) -> Expression {
+        return Expression::StringLiteral {
+            token: self.current_token.clone(),
+            value: self.current_token.literal.clone(),
+        };
+    }
+
+    // === Complex prefix parsing ===
+
+    // 两种前缀运算符：! 和 -
+    // -5;
+    // !foobar;
+    // 5 + -10;
+    // <prefix><expression>;
+    pub fn parse_prefix_expression(&mut self) -> Result<Expression, ParseError> {
         let current_token = self.current_token.clone();
         let operator = self.current_token.literal.clone();
 
@@ -228,18 +234,35 @@ impl Parser {
         return Ok(identifiers);
     }
 
-    fn parse_string_literal(&mut self) -> Result<Expression, ParseError> {
-        return Ok(Expression::StringLiteral {
-            token: self.current_token.clone(),
-            value: self.current_token.literal.clone(),
-        });
-    }
-
     fn parse_array_literal(&mut self) -> Result<Expression, ParseError> {
         return Ok(Expression::ArrayLiteral {
             token: self.current_token.clone(),
             elements: self.parse_expression_list(TokenType::RightBracket)?,
         });
+    }
+
+    fn parse_expression_list(&mut self, end: TokenType) -> Result<Vec<Expression>, ParseError> {
+        let mut list: Vec<Expression> = Vec::new();
+        if self.peek_token_is(end) {
+            self.next_token();
+            return Ok(list);
+        }
+
+        self.next_token();
+        let element = self.parse_expression(Precedence::Lowest)?;
+        list.push(element);
+
+        while self.peek_token_is(TokenType::Comma) {
+            self.next_token();
+            self.next_token();
+            let element = self.parse_expression(Precedence::Lowest)?;
+            list.push(element);
+
+        }
+
+        self.expect_peek(end)?;
+
+        return Ok(list);
     }
 
     fn parse_hash_literal(&mut self) -> Result<Expression, ParseError> {
@@ -275,7 +298,11 @@ impl Parser {
         });
     }
 
-    // ====== registerInfix
+    
+
+    
+
+    // === registerInfix ===
 
     fn parse_infix(&mut self, token_type: TokenType, left: Expression) -> Result<Expression, ParseError> {
         print!("parse_infix {:?}\n", token_type);
@@ -288,9 +315,9 @@ impl Parser {
             TokenType::NotEq |
             TokenType::LessThan |
             TokenType::GreaterThan => self.parse_infix_expression(left),
-
+            // Function call
             TokenType::LeftParen => self.parse_call_expression(left),
-
+            // Array or map index
             TokenType::LeftBracket => self.parse_index_expression(left),
 
             _ => Err(ParseError::NoInfixParseFn {
@@ -299,8 +326,9 @@ impl Parser {
         }
     }
 
+    // <expression><infix operator><expression>
+    // This function actually starts from the infix operator.
     fn parse_infix_expression(&mut self, left: Expression) -> Result<Expression, ParseError> {
-        println!("parse_infix_expression\n");
         // current token points to +, -, /, *, ==, !=, <, >.
         let current_token = self.current_token.clone();
         let operator = self.current_token.literal.clone();
@@ -308,11 +336,7 @@ impl Parser {
         let precedence = self.current_precedence();
         self.next_token();
 
-        println!("parse_infix_expression: start parsing right expression");
-
         let right = self.parse_expression(precedence)?;
-
-        println!("parse_infix_expression: finish parsing right expression: {}", right);
 
         return Ok(Expression::Infix {
             token: current_token,
@@ -365,29 +389,7 @@ impl Parser {
     //     Ok(args)
     // }
 
-    fn parse_expression_list(&mut self, end: TokenType) -> Result<Vec<Expression>, ParseError> {
-        let mut list: Vec<Expression> = Vec::new();
-        if self.peek_token_is(end) {
-            self.next_token();
-            return Ok(list);
-        }
-
-        self.next_token();
-        let element = self.parse_expression(Precedence::Lowest)?;
-        list.push(element);
-
-        while self.peek_token_is(TokenType::Comma) {
-            self.next_token();
-            self.next_token();
-            let element = self.parse_expression(Precedence::Lowest)?;
-            list.push(element);
-
-        }
-
-        self.expect_peek(end)?;
-
-        return Ok(list);
-    }
+    
 
     fn parse_index_expression(&mut self, left: Expression) -> Result<Expression, ParseError> {
         let token = self.current_token.clone();
