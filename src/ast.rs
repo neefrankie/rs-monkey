@@ -57,9 +57,12 @@ pub enum Expression {
         value: bool,
     },
     Prefix {
+        // -5;
+        // !foobar;
+        // 5 + -10;
         token: token::Token,
-        operator: String,
-        right: Rc<Expression>,
+        operator: String, // ! or -
+        right: Rc<Expression>, // Expression on the right of ! or -
     },
     Infix {
         // x > y
