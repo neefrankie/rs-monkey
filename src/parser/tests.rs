@@ -1,29 +1,18 @@
 use crate::token::{Token, TokenType};
-use crate::ast::{Expression, Node, Statement};
+use crate::ast::{
+    Expression,
+    Node,
+    Statement,
+    new_boolean_expr,
+    new_identifier_expr,
+    new_integer_expr,
+    new_infix_expr,
+};
 use crate::lexer::{Lexer};
 
 use super::precedence::{Precedence};
-use super::Parser;
-use super::errors::ParseError;
+use super::*;
 
-mod utils;
-
-use utils::{
-    new_identifier,
-    new_integer,
-    new_boolean,
-    unwrap_expression_statement,
-    unwrap_program,
-    assert_statements_len,
-    assert_identifier_expression,
-    assert_identifier,
-    assert_integer_literal,
-    assert_boolean,
-    assert_string,
-    assert_prefix_expression,
-    assert_infix_expression,
-    assert_let_statement,
-};
 
 #[test]
 fn test_precedence() {
@@ -196,7 +185,7 @@ fn test_parse_prefix_expression() {
     assert_prefix_expression(
         &expr, 
         "!", 
-        &new_integer(5)
+        &new_integer_expr(5)
     );
 
     parser.next_token(); // skip ;
@@ -206,7 +195,7 @@ fn test_parse_prefix_expression() {
     assert_prefix_expression(
         &expr,
         "-",
-        &new_integer(15)
+        &new_integer_expr(15)
     );
 
     parser.next_token();
@@ -216,7 +205,7 @@ fn test_parse_prefix_expression() {
     assert_prefix_expression(
         &expr,
         "!",
-        &new_identifier("foobar")
+        &new_identifier_expr("foobar")
     );
 
     parser.next_token();
@@ -226,11 +215,54 @@ fn test_parse_prefix_expression() {
     assert_prefix_expression(
         &expr,
         "-",
-        &new_identifier("foobar")
+        &new_identifier_expr("foobar")
     );
 }
 
+#[test]
+fn test_parse_infix_expression() {
+    let input = "5 + 5;";
+    let mut parser = Parser::new(Lexer::new(input.to_string()));
 
+    let expr = parser.parse_integer().unwrap();
+
+    assert_integer_literal(&expr, 5);
+
+    parser.next_token();
+
+    let expr = parser.parse_infix_expression(expr).unwrap();
+
+    assert_infix_expression(
+        &expr,
+        &new_integer_expr(5),
+        "+",
+        &new_integer_expr(5)
+    );
+}
+
+#[test]
+fn test_parse_grouped_expression() {
+    let input = "(5 + 5) * 2";
+    let lex = Lexer::new(input.to_string());
+    let mut parser = Parser::new(lex);
+
+    let expr = parser.parse_grouped_expression().unwrap();
+
+    parser.next_token();
+
+    let expr = parser.parse_infix_expression(expr).unwrap();
+
+    assert_infix_expression(
+        &expr, 
+        &new_infix_expr(
+            new_integer_expr(5), 
+            "+", 
+            new_integer_expr(5)
+        ), 
+        "*", 
+        &new_integer_expr(2)
+    );
+}
 
 #[test]
 fn test_let_statements() {
@@ -289,8 +321,6 @@ return 993 322;
     }
 }
 
-
-
 #[test]
 fn test_parsing_prefix_expressions() {
     let five = Expression::IntegerLiteral {
@@ -301,11 +331,11 @@ fn test_parsing_prefix_expressions() {
          value: 5,
     };
 
-    let fifteen = new_integer(15);
+    let fifteen = new_integer_expr(15);
 
-    let bool_true = new_boolean(true);
+    let bool_true = new_boolean_expr(true);
 
-    let bool_false = new_boolean(false);
+    let bool_false = new_boolean_expr(false);
 
     let tests = vec![
         ("!5;", "!", &five),
@@ -345,11 +375,11 @@ fn test_parsing_prefix_expressions() {
 
 #[test]
 fn test_parsing_infix_expressions() {
-    let five = new_integer(5);
+    let five = new_integer_expr(5);
 
-    let bool_true = new_boolean(true);
+    let bool_true = new_boolean_expr(true);
 
-    let bool_false = new_boolean(false);
+    let bool_false = new_boolean_expr(false);
 
     let tests = vec![
         ("5 + 5;", &five, "+", &five),
@@ -386,7 +416,7 @@ fn test_parsing_infix_expressions() {
         assert_infix_expression(
             expr, 
             left_value, 
-            expected_operator.to_string(), 
+            expected_operator, 
             right_value
         );
     }
@@ -446,29 +476,25 @@ fn test_if_expression() {
     let mut parser = Parser::new(lex);
     let program = unwrap_program(parser.parse_program());
 
-    assert_eq!(
-        program.statements.len(),
-        1,
-        "program.statements does not contain 1 statements. got={}",
-        program.statements.len()
-    );
-    // program.statements[0].expression
-    let expr = program.statements[0]
-        .as_expression()
-        .expect("program.statements[0] is not ExpressionStatement");
+    assert_statements_len(&program, 1);
 
-    let (
+    // program.statements[0].expression
+    let expr = unwrap_expression_statement(&program.statements[0]);
+
+    let Expression::If {
         condition, 
         consequence, 
-        alternative
-    ) = expr.as_if()
-        .expect("expr is not an IfExpression");
+        alternative ,
+        ..
+    } = expr else {
+        panic!("expr is not an IfExpression")
+    };
 
     assert_infix_expression(
         condition,
-        &new_identifier("x"), 
-        "<".to_string(), 
-        &new_identifier("y"),
+        &new_identifier_expr("x"), 
+        "<", 
+        &new_identifier_expr("y"),
     );
 
     assert_eq!(
@@ -494,16 +520,10 @@ fn test_function_literal_parsing() {
     let lex = Lexer::new(input.to_string());
     let mut parser = Parser::new(lex);
     let program = unwrap_program(parser.parse_program());
-    assert_eq!(
-        program.statements.len(),
-        1,
-        "program.statements does not contain 1 statement. got={}",
-        program.statements.len()
-    );
 
-    let expr = program.statements[0]
-        .as_expression()
-        .expect("program.statements[0] is not ExpressionStatement");
+    assert_statements_len(&program, 1);
+
+    let expr = unwrap_expression_statement(&program.statements[0]);
 
     match expr {
         Expression::FunctionLiteral {
@@ -535,9 +555,9 @@ fn test_function_literal_parsing() {
                 } => {
                     assert_infix_expression(
                         &*expression, 
-                        &new_identifier("x"), 
-                        "+".to_string(), 
-                        &new_identifier("y"),
+                        &new_identifier_expr("x"), 
+                        "+", 
+                        &new_identifier_expr("y"),
                     );
                 }
 
@@ -562,9 +582,7 @@ fn test_function_parameter_parsing() {
         let mut parser = Parser::new(lex);
         let program = unwrap_program(parser.parse_program());
 
-        let expr = program.statements[0]
-            .as_expression()
-            .expect("program.statements[0] is not ExpressionStatement");
+        let expr = unwrap_expression_statement(&program.statements[0]);
 
         match expr {
             Expression::FunctionLiteral {
@@ -596,16 +614,9 @@ fn test_call_expression_parsing() {
     let mut parser = Parser::new(lex);
     let program = unwrap_program(parser.parse_program());
 
-    assert_eq!(
-        program.statements.len(),
-        1,
-        "program.statements does not contain 1 statement. got={}",
-        program.statements.len()
-    );
+    assert_statements_len(&program, 1);
 
-    let expr = program.statements[0]
-        .as_expression()
-        .expect("program.statements[0] is not ExpressionStatement");
+    let expr = unwrap_expression_statement(&program.statements[0]);
 
     match expr {
         Expression::Call {
@@ -625,15 +636,15 @@ fn test_call_expression_parsing() {
             assert_integer_literal(&arguments[0], 1);
             assert_infix_expression(
                 &arguments[1], 
-                &new_integer(2),
-                "*".to_string(),
-                &new_integer(3)
+                &new_integer_expr(2),
+                "*",
+                &new_integer_expr(3)
             );
             assert_infix_expression(
                 &arguments[2], 
-                &new_integer(4),
-                "+".to_string(),
-                &new_integer(5)
+                &new_integer_expr(4),
+                "+",
+                &new_integer_expr(5)
             );
         }
 
@@ -660,15 +671,15 @@ fn test_parsing_array_literals() {
             assert_integer_literal(&elements[0], 1);
             assert_infix_expression(
                 &elements[1],
-                &new_integer(2),
-                "*".to_string(),
-                &new_integer(2)
+                &new_integer_expr(2),
+                "*",
+                &new_integer_expr(2)
             );
             assert_infix_expression(
                 &elements[2],
-                &new_integer(3),
-                "+".to_string(),
-                &new_integer(3)
+                &new_integer_expr(3),
+                "+",
+                &new_integer_expr(3)
             );
         }
 

@@ -1,37 +1,20 @@
-use crate::token::{Token, TokenType};
-use crate::ast::{Expression, Identifier, Program, Statement, Node};
+use crate::ast::{
+    Expression,
+    Identifier,
+    Program,
+    Statement,
+    Node,
+};
 
 use super::ParseError;
 
-pub fn new_identifier(value: &str) -> Expression {
-    Expression::Ident(Identifier {
-        token: Token {
-            token_type: TokenType::Ident,
-            literal: value.to_string(),
-        },
-        value: value.to_string(),
-    })
-}
-
-pub fn new_integer(value: i64) -> Expression {
-    Expression::IntegerLiteral {
-        token: Token {
-            token_type: TokenType::Int,
-            literal: value.to_string(),
-        },
-        value: value,
-    }
-}
-
-pub fn new_boolean(value: bool) -> Expression {
-    Expression::Boolean {
-        token: Token {
-            token_type: if value { TokenType:: True } else { TokenType::False },
-            literal: value.to_string(),
-        },
-        value: value,
-    }
-}
+// fn assert_expression(expr: &Expression, expected: &Expression) {
+//     match expr {
+//         Expression::Ident(ident) => {
+//             assert_identifier(ident, expected);
+//         }
+//     }
+// }
 
 pub fn assert_identifier_expression(expr: &Expression, expected: &str) {
 
@@ -140,6 +123,41 @@ pub fn assert_prefix_expression(
     );
 }
 
+pub fn assert_infix_expression(
+    expr: &Expression,
+    expected_left: &Expression,
+    expected_operator: &str,
+    expected_right: &Expression
+) {
+    let Expression::Infix { 
+        left, 
+        operator, 
+        right, 
+        ..
+    } = expr else {
+        panic!("exp not Expression::Infix. got={}", expr)
+    };
+
+    assert_eq!(
+        *operator,
+        expected_operator,
+        "exp.operator is not {}. got={}",
+        expected_operator,
+        operator
+    );
+
+    assert_literal_expression(
+        left, 
+        expected_left
+    );
+
+    assert_literal_expression(
+        right, 
+        expected_right
+    );
+}
+
+
 fn assert_literal_expression(expr: &Expression, expected: &Expression) {
     match expected {
         Expression::Ident(identifier) => {
@@ -158,6 +176,19 @@ fn assert_literal_expression(expr: &Expression, expected: &Expression) {
             assert_boolean(
                 expr, 
                 *value
+            );
+        }
+        Expression::Infix { 
+            left, 
+            operator, 
+            right,
+            ..
+        } => {
+            assert_infix_expression(
+                expr, 
+                left, 
+                operator, 
+                right
             );
         }
         _ => {
@@ -209,38 +240,7 @@ pub fn assert_statements_len(program: &Program, expected: usize) {
 
 
 
-pub fn assert_infix_expression(
-    exp: &Expression, 
-    left: &Expression, 
-    operator: String, 
-    right: &Expression
-) {
-    let Some((
-        infix_left, 
-        infix_operator, 
-        infix_right
-    )) = exp.as_infix() else {
-        panic!("expression is not an Expression::Infix. got {}", exp);
-    };
 
-    assert_literal_expression(
-        infix_left, 
-        left
-    );
-    
-    assert_eq!(
-        infix_operator,
-        operator,
-        "exp.operator is not {}. got={}",
-        operator,
-        infix_operator
-    );
-
-    assert_literal_expression(
-        infix_right,
-        right
-    );
-}
 
 pub fn assert_let_statement(stmt: &Statement, expected_name: &str) {
 
