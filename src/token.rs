@@ -107,25 +107,10 @@ pub fn lookup_ident(ident: &str) -> TokenType {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
+mod tests;
 
-    #[test]
-    fn test_lookup_ident() {
-        let tests = vec![
-            ("fn", TokenType::Function),
-            ("let", TokenType::Let),
-            ("true", TokenType::True),
-            ("false", TokenType::False),
-            ("if", TokenType::If),
-            ("else", TokenType::Else),
-            ("return", TokenType::Return),
-            ("my_ident", TokenType::Ident),
-        ];
+#[cfg(test)]
+mod test_utils;
 
-        for (input, expected) in tests {
-            let result = lookup_ident(input);
-            assert_eq!(result, expected);
-        }
-    }
-}
+#[cfg(test)]
+pub use test_utils::*;
