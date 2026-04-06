@@ -1,6 +1,6 @@
 use std::fmt;
 
-use super::{Node, Expression, Identifier, BlockStatement};
+use super::{Node, Expression, Identifier};
 
 impl Node for Identifier {
     fn token_literal(&self) -> String {
@@ -204,54 +204,6 @@ impl fmt::Display for Expression {
     }
 }
 
-impl Expression {
-
-
-    pub fn as_infix(&self) -> Option<(&Expression, String, &Expression)> {
-        match self {
-            Expression::Infix {
-                left,
-                operator,
-                right,
-                ..
-            } => Some((
-                left.as_ref(),
-                operator.clone(),
-                right.as_ref(),
-            )),
-            _ => None,
-        }
-    }
-
-    pub fn as_if(&self) -> Option<(
-        &Expression, 
-        &BlockStatement, 
-        Option<&BlockStatement>
-    )> {
-        match self {
-            Expression::If {
-                condition,
-                consequence,
-                alternative,
-                ..
-            } => {
-                match alternative {
-                    Some(alt) => Some((
-                        condition.as_ref(),
-                        consequence,
-                        Some(alt),
-                    )),
-                    None => Some((
-                        condition.as_ref(),
-                        consequence,
-                        None,
-                    )),
-                }
-            },
-            _ => None,
-        }
-    }
-}
 
 
 

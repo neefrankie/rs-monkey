@@ -1,8 +1,8 @@
 use crate::token;
 use std::{rc::Rc};
 
-mod statements;
-mod expressions;
+mod statement;
+mod expression;
 mod program;
 
 pub trait Node {
@@ -126,3 +126,9 @@ pub struct Identifier {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod test_utils;
+
+#[cfg(test)]
+pub use test_utils::*;
