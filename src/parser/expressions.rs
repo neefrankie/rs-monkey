@@ -110,16 +110,20 @@ impl Parser {
         });
     }
 
-    fn parse_grouped_expression(&mut self) -> Result<Expression, ParseError> {
+    // 用括号给表达式分组以修改起优先级，从而影响上下文中求值的顺序
+    // (5 + 5) * 2;
+    pub fn parse_grouped_expression(&mut self) -> Result<Expression, ParseError> {
         self.next_token();
 
         let exp = self.parse_expression(Precedence::Lowest)?;
 
+        // Stops at the right paren.
         self.expect_peek(TokenType::RightParen)?;
 
         return Ok(exp);
     }
 
+    // if (<condition>)<result> else <alternative>
     fn parse_if_expression(&mut self) -> Result<Expression, ParseError> {
         // if (x > y) {
         //     return x;
@@ -328,7 +332,7 @@ impl Parser {
 
     // <expression><infix operator><expression>
     // This function actually starts from the infix operator.
-    fn parse_infix_expression(&mut self, left: Expression) -> Result<Expression, ParseError> {
+    pub fn parse_infix_expression(&mut self, left: Expression) -> Result<Expression, ParseError> {
         // current token points to +, -, /, *, ==, !=, <, >.
         let current_token = self.current_token.clone();
         let operator = self.current_token.literal.clone();
