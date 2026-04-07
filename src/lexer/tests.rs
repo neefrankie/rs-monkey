@@ -64,7 +64,7 @@ fn test_skip_whitespace() {
 
 #[test]
 fn test_read_identifier() {
-    let input = "let fn five";
+    let input = "let fn five()";
     let mut lexer = Lexer::new(input.to_string());
 
     let ident = lexer.read_identifier();
@@ -84,7 +84,7 @@ fn test_read_identifier() {
     let ident = lexer.read_identifier();
     assert_eq!(ident, "five");
     assert_eq!(lexer.position, 11);
-    assert_eq!(lexer.ch, b'\0');
+    assert_eq!(lexer.ch, b'(');
 }
 
 #[test]
