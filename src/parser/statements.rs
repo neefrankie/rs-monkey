@@ -87,6 +87,7 @@ impl Parser {
         // parseing x + 10
         let expr = self.parse_expression(Precedence::Lowest)?;
         
+        // Move after semicolon
         if self.peek_token_is(TokenType::Semicolon) {
             self.next_token();
         }
@@ -103,9 +104,10 @@ impl Parser {
         let mut statements: Vec<Statement> = Vec::new();
 
         self.next_token();
-        // 反复调用 parse_statement，知道遇见右大括号 }
+        // 反复调用 parse_statement，直到遇见右大括号 }
         // 或 TokenType::Eof，前者表示到了块语句的末尾，
         // 后者表示没有要解析的词法单元。
+        // Stops at } or EOF
         while !self.current_token_is(TokenType::RightBrace) && !self.current_token_is(TokenType::Eof) {
             let statement = self.parse_statement()?;
             statements.push(statement);
