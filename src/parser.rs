@@ -96,7 +96,7 @@ impl Parser {
         } else {
             Err(ParseError::UnexpectedToken {
                 expected: token_type, 
-                got: self.current_token.token_type,
+                got: self.peek_token.token_type,
             })
         }
     }
