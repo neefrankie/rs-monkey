@@ -9,8 +9,12 @@ use super::Parser;
 impl Parser {
     pub(super) fn parse_expression(&mut self, precedence: Precedence) -> Result<Expression, ParseError> {
 
-        println!("parseExpression({:?}), current: {:?}, peek: {:?}", 
-         precedence, self.current_token, self.peek_token);
+        println!(
+            "parse_expression({:?}), current: {:?}, peek: {:?}\n",
+            precedence, 
+            self.current_token, 
+            self.peek_token
+        );
 
         let mut left_expr = self.dispatch_prefix_parsing(self.current_token.token_type)?;
 
@@ -27,6 +31,9 @@ impl Parser {
 
     // This function plays the role of registerPrefix(TokenType, func) in Go version.
     fn dispatch_prefix_parsing(&mut self, token_type: TokenType) -> Result<Expression, ParseError> {
+
+        print!("dispatch_prefix_parsing: {}\n", token_type);
+
         match token_type {
             TokenType::Ident => Ok(self.parse_identifier()),
 
@@ -59,6 +66,9 @@ impl Parser {
     // === Simple prefix parsing ===
 
     pub(super) fn parse_identifier(&mut self) -> Expression {
+        
+        print!("parse_identifier {}\n", self.current_token.literal);
+        
         return Expression::Ident(ast::Identifier {
             token: self.current_token.clone(),
             value: self.current_token.literal.clone(),
@@ -251,21 +261,25 @@ impl Parser {
         return Ok(identifiers);
     }
 
-    fn parse_array_literal(&mut self) -> Result<Expression, ParseError> {
+    pub(super) fn parse_array_literal(&mut self) -> Result<Expression, ParseError> {
+        print!("parse_array_literal {}\n", self.current_token.literal);
+
         return Ok(Expression::ArrayLiteral {
-            token: self.current_token.clone(),
+            token: self.current_token.clone(), // Left bracket [
             elements: self.parse_expression_list(TokenType::RightBracket)?,
         });
     }
 
-    fn parse_hash_literal(&mut self) -> Result<Expression, ParseError> {
+    // {<expression>: {expression}, ...}
+    pub(super) fn parse_hash_literal(&mut self) -> Result<Expression, ParseError> {
+        // Starting {
         let token = self.current_token.clone();
         let mut pairs: Vec<(Expression, Expression)> = Vec::new();
 
         while !self.peek_token_is(TokenType::RightBrace) {
             // Skip {.
             self.next_token();
-            // Stops before :
+            // Parse key.
             let key = self.parse_expression(Precedence::Lowest)?;
             
             // Move to :
@@ -276,13 +290,15 @@ impl Parser {
             let value = self.parse_expression(Precedence::Lowest)?;
             pairs.push((key, value));
 
+            // Next token could be an optional comma.
             if self.peek_token_is(TokenType::RightBrace) {
-                continue;
+                break;
             }
 
             self.expect_peek(TokenType::Comma)?;
         }
 
+        // Move to }
         self.expect_peek(TokenType::RightBrace)?;
 
         return Ok(Expression::HashLiteral {
@@ -298,7 +314,9 @@ impl Parser {
     // === registerInfix ===
 
     fn dispatch_infix(&mut self, token_type: TokenType, left: Expression) -> Result<Expression, ParseError> {
-        print!("parse_infix {:?}\n", token_type);
+
+        print!("dispatch_infix {}\n", token_type);
+
         match token_type {
             TokenType::Plus |
             TokenType::Minus |
@@ -311,6 +329,7 @@ impl Parser {
             // Function call
             TokenType::LeftParen => self.parse_call_expression(left),
             // Array or map index
+            // [] 紧跟在另一个表达式后面时才是中缀，否则就是前缀。
             TokenType::LeftBracket => self.parse_index_expression(left),
 
             _ => Err(ParseError::NoInfixParseFn {
@@ -359,15 +378,18 @@ impl Parser {
     // (arg1, arg2, ...)
     // [elem1, elem2, ...]
     pub(super) fn parse_expression_list(&mut self, end: TokenType) -> Result<Vec<Expression>, ParseError> {
+        print!("parse_expression_list: {}", self.current_token.literal);
+
+        // We are pointing to ( or [ now.
         let mut list: Vec<Expression> = Vec::new();
-        // Points to opening ( or [
+        // Empty list.
         if self.peek_token_is(end) {
             // Move to closing ) or ]
             self.next_token();
             return Ok(list);
         }
 
-        // Skip opening ( or [
+        // Move to first element
         self.next_token();
         // First element
         let element = self.parse_expression(Precedence::Lowest)?;
@@ -388,10 +410,25 @@ impl Parser {
         return Ok(list);
     }    
 
-    fn parse_index_expression(&mut self, left: Expression) -> Result<Expression, ParseError> {
+    // <expression>[<expression>]
+    // 对于数组，如果没有设置 TokenType::LeftBracket => Some(Precedence::Index)，
+    // 是可以正常解析的（按照原书的代码顺序），但是无法识别出来时中缀表达式，
+    // 以 myArray[1] 为例，首先解析成 Identifier，但是因为没有 `[`
+    // 对应的权重，所以 myArray 解析成 Identifier 就结束了，
+    // 不会进入优先级的循环，这成了一个独立的 Statement。
+    // 接下来走到 [ 时，就会当作数组字面量了。
+    pub(super) fn parse_index_expression(&mut self, left: Expression) -> Result<Expression, ParseError> {
+        
+        print!("parse_index_expression {}\n", self.current_token.literal);
+
+        // Points to starting `[`
         let token = self.current_token.clone();
+        // Expresions inside []
         self.next_token();
+
         let index = self.parse_expression(Precedence::Lowest)?;
+
+        // Expect next token to be `]`
         self.expect_peek(TokenType::RightBracket)?;
 
         return Ok(Expression::Index {
