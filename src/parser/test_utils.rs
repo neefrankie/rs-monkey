@@ -137,7 +137,7 @@ pub fn assert_infix_expression(
         right, 
         ..
     } = expr else {
-        panic!("exp not Expression::Infix. got={}", expr)
+        panic!("exp not Expression::Infix. got={:?}", expr)
     };
 
     assert_eq!(
@@ -184,7 +184,7 @@ pub fn assert_if_expression(
 
 pub fn assert_function_literal(
     expr: &Expression,
-    expected_parameters: Vec<Identifier>,
+    expected_parameters: &[Identifier],
     expected_body: &BlockStatement,
 ) {
     let Expression::FunctionLiteral {
@@ -211,10 +211,57 @@ pub fn assert_function_literal(
     );
 }
 
+pub fn assert_array_literal(
+    expr: &Expression,
+    expected_elements: &[Expression],
+) {
+    let Expression::ArrayLiteral {
+        elements,
+        ..
+    } = expr else {
+        panic!("Not an Expression::ArrayLiteral");
+    };
+
+    assert_eq!(elements.len(), expected_elements.len());
+
+    for (i, element) in elements.iter().enumerate() {
+        assert_expr(
+            element,
+            &expected_elements[i]
+        );
+    }
+}
+
+pub fn assert_hash_literal(
+    expr: &Expression,
+    expected_pairs: &[(Expression, Expression)],
+) {
+    let Expression::HashLiteral {
+        pairs,
+        ..
+    } = expr else {
+        panic!("Not an Expression::HashLiteral");
+    };
+
+    assert_eq!(pairs.len(), expected_pairs.len());
+
+    for (i, element) in pairs.iter().enumerate() {
+        let (key, value) = element;
+        assert_expr(
+            key,
+            &expected_pairs[i].0
+        );
+        assert_expr(
+            value,
+            &expected_pairs[i].1
+        );
+    }
+}
+
 pub fn assert_call_expression(
     expr: &Expression, 
     expected_func: &Expression, 
-    expected_args: Vec<Expression>
+    expected_args: &[Expression],
 ) {
     let Expression::Call {
         function,
@@ -230,6 +277,23 @@ pub fn assert_call_expression(
     for (i, arg) in arguments.iter().enumerate() {
         assert_expr(arg, &expected_args[i]);
     }
+}
+
+pub fn assert_index_expression(
+    expr: &Expression,
+    expected_left: &Expression,
+    expected_index: &Expression
+) {
+    let Expression::Index {
+        left,
+        index,
+        ..
+    } = expr else {
+        panic!("Not an Expression::Index")
+    };
+
+    assert_expr(left, expected_left);
+    assert_expr(index, expected_index);
 }
 
 pub fn assert_expr(expr: &Expression, expected: &Expression) {
@@ -277,6 +341,53 @@ pub fn assert_expr(expr: &Expression, expected: &Expression) {
                 consequence,
                 alternative.as_deref(),
             );
+        },
+        Expression::FunctionLiteral { 
+            parameters, 
+            body,
+            ..
+        } => {
+            assert_function_literal(
+                expr,
+                parameters,
+                body,
+            );
+        },
+        Expression::Call {
+            function,
+            arguments,
+            ..
+        } => {
+            assert_call_expression(
+                expr,
+                function,
+                arguments,
+            );
+        },
+        Expression::StringLiteral { 
+            value,
+            ..
+        } => {
+            assert_string(expr, value);
+        },
+        Expression::ArrayLiteral {
+            elements,
+            ..
+        } => {
+            assert_array_literal(expr, elements);
+        },
+        Expression::Index {
+            left,
+            index,
+            ..
+        } => {
+            assert_index_expression(expr, left, index);
+        },
+        Expression::HashLiteral {
+            pairs,
+            ..
+        } => {
+            assert_hash_literal(expr, pairs);
         },
         _ => {
             panic!("type of exp not handled. got {}", expr);

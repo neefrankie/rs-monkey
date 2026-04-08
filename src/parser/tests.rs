@@ -2,7 +2,7 @@ use std::vec;
 
 use crate::token::{Token, TokenType, token_from_str, new_int_token};
 use crate::ast::{
-    Expression, Statement, new_block_stmt, new_boolean_expr, new_expr_stmt, new_identifier, new_identifier_expr, new_infix_expr, new_integer_expr
+    Expression, Statement, new_block_stmt, new_boolean_expr, new_expr_stmt, new_identifier, new_identifier_expr, new_infix_expr, new_integer_expr, new_string_expr
 };
 use crate::lexer::{Lexer};
 
@@ -98,6 +98,14 @@ fn test_next_token() {
     }
 
     assert_eq!(parser.lexer.current_position(), 12);
+}
+
+#[test]
+fn test_epxect_token() {
+    let input = "[]";
+    let lex = Lexer::new(input.to_string());
+    let mut parser = Parser::new(lex);
+    parser.expect_peek(TokenType::RightBracket).unwrap();
 }
 
 #[test]
@@ -276,6 +284,32 @@ fn test_parse_if_expression() {
 }
 
 #[test]
+fn test_parse_function_literal() {
+    let input = "fn(x, y) { x + y; }";
+    let lex = Lexer::new(input.to_string());
+    let mut parser = Parser::new(lex);
+    let function = parser.parse_function_literal().unwrap();
+
+    assert_function_literal(
+        &function,
+        &vec![
+            new_identifier("x"),
+            new_identifier("y"),
+        ], 
+        &new_block_stmt(vec![
+            new_expr_stmt(
+                "x",
+                new_infix_expr(
+                    new_identifier_expr("x"), 
+                    "+", 
+                    new_identifier_expr("y")
+                )
+            ),
+        ]),
+    );
+}
+
+#[test]
 fn test_parse_function_parameters() {
     let input = "(x, y)";
     let lex = Lexer::new(input.to_string());
@@ -297,73 +331,63 @@ fn test_parse_function_parameters() {
 }
 
 #[test]
-fn test_parse_expression_list() {
-    let input = "(2, 3)";
+fn test_parse_array_literal() {
+    // parse_array_literal()
+    // parse_expression_list()
+    //   if peek_token_is("]") end
+    //   move to 1
+    //   parse_expression() -> parse_integer()
+    //   move to comma, move to 2
+    //   parse_expression()
+    //     parse_prefix_expression() <- 2
+    //       parse_infix_expression() <- * 2
+    //    ...
+    //   expect "]" and move to it.
+    let input = "[1, 2 * 2, 3 + 3]";
     let lex = Lexer::new(input.to_string());
     let mut parser = Parser::new(lex);
+    let array = parser.parse_array_literal().unwrap();
 
-    let exprs = parser.parse_expression_list(TokenType::RightParen).unwrap();
-
-    assert_eq!(exprs.len(), 2);
-
-    assert_expr(
-        &exprs[0],
-        &new_integer_expr(2),
-    );
-
-    assert_expr(
-        &exprs[1],
-        &new_integer_expr(3),
-    );
-
-    assert_eq!(parser.current_token, token_from_str(")"));
-}
-
-#[test]
-fn test_parse_call_expression() {
-    let input = "add(2, 3);";
-    let lex = Lexer::new(input.to_string());
-    let mut parser = Parser::new(lex);
-
-    let function = parser.parse_identifier();
-    parser.next_token();
-    assert_eq!(parser.current_token, token_from_str("("));
-
-    let expr = parser.parse_call_expression(function).unwrap();
-
-    assert_call_expression(
-        &expr,
-        &new_identifier_expr("add"),
-        vec![
-            new_integer_expr(2),
-            new_integer_expr(3),
-        ]
-    );
-}
-
-#[test]
-fn test_parse_function_literal() {
-    let input = "fn(x, y) { x + y; }";
-    let lex = Lexer::new(input.to_string());
-    let mut parser = Parser::new(lex);
-    let function = parser.parse_function_literal().unwrap();
-
-    assert_function_literal(
-        &function,
-        vec![
-            new_identifier("x"),
-            new_identifier("y"),
-        ], 
-        &new_block_stmt(vec![
-            new_expr_stmt(
-                "x",
-                new_infix_expr(
-                    new_identifier_expr("x"), 
-                    "+", 
-                    new_identifier_expr("y")
-                )
+    assert_array_literal(
+        &array, 
+        &vec![
+            new_integer_expr(1),
+            new_infix_expr(
+                new_integer_expr(2),
+                "*",
+                new_integer_expr(2),
             ),
-        ]),
+            new_infix_expr(
+                new_integer_expr(3),
+                "+",
+                new_integer_expr(3),
+            ),
+        ],
+    );
+
+    assert_eq!(parser.current_token, token_from_str("]"));
+}
+
+#[test]
+fn test_parse_hash_literal() {
+    let input = r#"{"one": 1, "two": 2}"#;
+    let lex = Lexer::new(input.to_string());
+    let mut parser = Parser::new(lex);
+
+    let expr = parser.parse_hash_literal().unwrap();
+
+    assert_hash_literal(
+        &expr,
+        &vec![
+            (
+                new_string_expr("one"),
+                new_integer_expr(1),
+            ),
+            (
+                new_string_expr("two"),
+                new_integer_expr(2),
+            ),
+        ],
     );
 }
 
@@ -391,6 +415,126 @@ fn test_parse_infix_expression() {
         &new_integer_expr(5)
     );
 }
+
+#[test]
+fn test_parse_call_expression() {
+    let input = "add(2, 3);";
+    let lex = Lexer::new(input.to_string());
+    let mut parser = Parser::new(lex);
+
+    let function = parser.parse_identifier();
+    parser.next_token();
+    assert_eq!(parser.current_token, token_from_str("("));
+
+    let expr = parser.parse_call_expression(function).unwrap();
+
+    assert_call_expression(
+        &expr,
+        &new_identifier_expr("add"),
+        &vec![
+            new_integer_expr(2),
+            new_integer_expr(3),
+        ]
+    );
+}
+
+#[test]
+fn test_parse_expression_list() {
+    let input = "(2, 3)";
+    let lex = Lexer::new(input.to_string());
+    let mut parser = Parser::new(lex);
+
+    let exprs = parser.parse_expression_list(TokenType::RightParen).unwrap();
+
+    assert_eq!(exprs.len(), 2);
+
+    assert_expr(
+        &exprs[0],
+        &new_integer_expr(2),
+    );
+
+    assert_expr(
+        &exprs[1],
+        &new_integer_expr(3),
+    );
+
+    assert_eq!(parser.current_token, token_from_str(")"));
+}
+
+#[test]
+fn test_parse_array_index_expression() {
+    let input = "myArray[1 + 1]";
+    let lexer = Lexer::new(input.to_string());
+    let mut parser = Parser::new(lexer);
+    let left = parser.parse_identifier();
+    // If you don't call next_token(), 
+    // you will get array literal
+    parser.next_token();
+
+    assert_eq!(parser.current_token, token_from_str("["));
+
+    let expr = parser.parse_index_expression(left).unwrap();
+
+    assert_index_expression(
+        &expr, 
+        &new_identifier_expr("myArray"), 
+        &new_infix_expr(
+            new_integer_expr(1), 
+            "+",
+            new_integer_expr(1),
+            ),
+    );
+}
+
+#[test]
+fn test_parse_hash_key() {
+    let input = r#"hash["key"]"#;
+    let lex = Lexer::new(input.to_string());
+    let mut parser = Parser::new(lex);
+    let left = parser.parse_identifier();
+    parser.next_token();
+
+    let expr = parser.parse_index_expression(left).unwrap();
+
+    assert_index_expression(
+        &expr,
+        &new_identifier_expr("hash"),
+        &new_string_expr("key"),
+    );
+}
+
+// === Integrated test ===
+
+#[test]
+fn test_index_precedence() {
+    let tests = vec![
+        (
+            "a * [1, 2, 3, 4][b * c] * d", 
+            "((a * ([1, 2, 3, 4][(b * c)])) * d)"
+        ),
+        (
+            "add(a * b[2], b[1], 2 * [1, 2][1])",
+            "add((a * (b[2])), (b[1]), (2 * ([1, 2][1])))",
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let l = Lexer::new(input.to_string());
+        let mut p = Parser::new(l);
+        let program = unwrap_program(p.parse_program());
+
+        let actual = program.to_string();
+        assert_eq!(
+            actual, 
+            expected,
+            "Expected: {}, got: {}",
+            expected,
+            actual
+        );
+    }
+}
+
+
 
 #[test]
 fn test_parse_block_stmt() {
