@@ -98,16 +98,16 @@ pub enum Expression {
         value: String,
     },
     ArrayLiteral {
-        token: token::Token,
+        token: token::Token, // [
         elements: Vec<Expression>,
     },
     Index {
-        token: token::Token,
+        token: token::Token, // [
         left: Rc<Expression>,
         index: Rc<Expression>,
     },
     HashLiteral {
-        token: token::Token,
+        token: token::Token, // {
         pairs: Vec<(Expression, Expression)>,
     },
 }

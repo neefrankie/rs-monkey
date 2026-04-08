@@ -1,9 +1,7 @@
 use std::rc::Rc;
 
 use crate::token::{
-    token_from_str,
-    new_int_token,
-    new_bool_token,
+    new_bool_token, new_int_token, new_string_token, token_from_str
 };
 use super::{
     Statement,
@@ -37,6 +35,13 @@ pub fn new_boolean_expr(value: bool) -> Expression {
     Expression::Boolean {
         token: new_bool_token(value),
         value: value,
+    }
+}
+
+pub fn new_string_expr(value: &str) -> Expression {
+    Expression::StringLiteral {
+        token: new_string_token(value),
+        value: value.to_string(),
     }
 }
 
