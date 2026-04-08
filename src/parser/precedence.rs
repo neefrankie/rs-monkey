@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::token::TokenType;
 
 
@@ -38,35 +40,27 @@ impl Precedence {
     }
 
     // 如果需要获取数值（很少需要）
-    // pub fn value(&self) -> u8 {
-    //     *self as u8
-    // }
+    pub fn value(&self) -> u8 {
+        *self as u8
+    }
+
+    pub fn name(&self) -> &'static str {
+        match self {
+            Precedence::Lowest => "Lowest",
+            Precedence::Equal => "Equal",
+            Precedence::LessGreater => "LessGreater",
+            Precedence::Sum => "Sum",
+            Precedence::Product => "Product",
+            Precedence::Prefix => "Prefix",
+            Precedence::Call => "Call",
+            Precedence::Index => "Index",
+        }
+    }
 }
 
-// 如果你有很多优先级，可以用宏避免手动赋值：
-// macro_rules! define_precedence {
-//     ($($name:ident),* $(,)?) => {
-//         #[repr(u8)]
-//         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-//         pub enum Precedence {
-//             $($name,)*
-//         }
-        
-//         impl Precedence {
-//             $(
-//                 pub const $name: Precedence = Precedence::$name;
-//             )*
-//         }
-//     };
-// }
+impl fmt::Display for Precedence {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}[{}]", self.name(), self.value())
+    }
+}
 
-// // 使用
-// define_precedence! {
-//     Lowest,
-//     Equals,
-//     LessGreater, 
-//     Sum,
-//     Product,
-//     Prefix,
-//     Call,
-// }
