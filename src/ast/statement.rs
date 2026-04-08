@@ -1,9 +1,9 @@
 use std::fmt;
 
-use super::{Node, Statement, Expression, Identifier, BlockStatement};
+use super::{Statement, Expression, BlockStatement};
 
-impl Node for Statement {
-    fn token_literal(&self) -> String {
+impl Statement {
+    pub fn token_literal(&self) -> String {
         match self {
             Statement::Let {
                 token,
@@ -58,40 +58,11 @@ impl Statement {
             _ => None,
         }
     }
-
-    pub fn as_let(&self) -> Option<(&Identifier, &Expression)> {
-        match self {
-            Statement::Let {
-                name,
-                value,
-                ..
-            } => Some((name, value.as_ref())),
-            _ => None,
-        }
-    }
-
-    pub fn as_return(&self) -> Option<&Expression> {
-        match self {
-            Statement::Return {
-                return_value,
-                ..
-            } => return_value.as_deref(),
-            _ => None,
-        }
-    }
-
-    pub fn is_expression(&self) -> bool {
-        matches!(self, Statement::Expression { .. })
-    }
-
-    pub fn is_let(&self) -> bool {
-        matches!(self, Statement::Let { .. })
-    }
 }
 
 
-impl Node for BlockStatement {
-    fn token_literal(&self) -> String {
+impl BlockStatement {
+    pub fn token_literal(&self) -> String {
         self.token.literal.clone()
     }
 }

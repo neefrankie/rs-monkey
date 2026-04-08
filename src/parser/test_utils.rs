@@ -6,7 +6,6 @@ use crate::ast::{
     Program,
     Statement,
     BlockStatement,
-    Node,
 };
 
 use super::ParseError;

@@ -2,7 +2,7 @@ use std::vec;
 
 use crate::token::{Token, TokenType, token_from_str, new_int_token};
 use crate::ast::{
-    Expression, Node, Statement, new_block_stmt, new_boolean_expr, new_expr_stmt, new_identifier, new_identifier_expr, new_infix_expr, new_integer_expr
+    Expression, Statement, new_block_stmt, new_boolean_expr, new_expr_stmt, new_identifier, new_identifier_expr, new_infix_expr, new_integer_expr
 };
 use crate::lexer::{Lexer};
 

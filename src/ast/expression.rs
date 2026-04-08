@@ -1,9 +1,9 @@
 use std::fmt;
 
-use super::{Node, Expression, Identifier};
+use super::{Expression, Identifier};
 
-impl Node for Identifier {
-    fn token_literal(&self) -> String {
+impl Identifier {
+    pub fn token_literal(&self) -> String {
         self.token.literal.clone()
     }
 }
@@ -14,8 +14,8 @@ impl fmt::Display for Identifier {
     }
 }
 
-impl Node for Expression {
-    fn token_literal(&self) -> String {
+impl Expression {
+    pub fn token_literal(&self) -> String {
         match self {
             Expression::Ident(identifier) => identifier.token_literal(),
 

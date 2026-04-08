@@ -1,9 +1,9 @@
 use std::fmt;
-use super::{Node, Program};
+use super::{Program};
 
 
-impl Node for Program {
-    fn token_literal(&self) -> String {
+impl Program {
+    pub fn token_literal(&self) -> String {
         if let Some(stmt) = self.statements.first() {
             stmt.token_literal()
         } else {

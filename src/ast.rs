@@ -1,13 +1,10 @@
-use crate::token;
 use std::{rc::Rc};
+
+use crate::token;
 
 mod statement;
 mod expression;
 mod program;
-
-pub trait Node {
-    fn token_literal(&self) -> String;
-}
 
 pub struct Program {
     pub statements: Vec<Statement>,
