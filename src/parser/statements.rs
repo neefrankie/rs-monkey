@@ -16,25 +16,26 @@ impl Parser {
     }
 
     fn parse_let_statement(&mut self) -> Result<Statement, ParseError> {
-        // For let x = 5;, current_token points to `let`.
-        // expect_peek might move the pointer, so we need to clone it.
+        // current_token points to `let`.
         let let_token = self.current_token.clone();
-
+        // Move to identifier.
         self.expect_peek(TokenType::Ident)?;
 
-        // Parse x in x = 5
+        // Parse identifier.
         let name = ast::Identifier {
             token: self.current_token.clone(),
             value: self.current_token.literal.clone(),
         };
-
+        // Next token must be '=' and move to it.
         self.expect_peek(TokenType::Assign)?;
 
-        self.next_token(); // consume '='
+        // Go to token after '='
+        self.next_token(); 
         
-        // Current token points to '5' in let x = 5;
+        // Point to the start of expression.
         let value = self.parse_expression(Precedence::Lowest)?;
 
+        // 
         while !self.current_token_is(TokenType::Semicolon) {
             self.next_token();
         }
