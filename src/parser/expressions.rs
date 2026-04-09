@@ -76,6 +76,9 @@ impl Parser {
     }
 
     pub(super) fn parse_integer(&mut self) -> Result<Expression, ParseError> {
+
+        print!("parse_integer {}\n", self.current_token.literal);
+        
         let Ok(value) = self.current_token.literal.parse::<i64>() else {
             return Err(ParseError::ExpectedInt {
                 got: self.current_token.literal.clone(),

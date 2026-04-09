@@ -15,7 +15,10 @@ impl Parser {
         }
     }
 
-    fn parse_let_statement(&mut self) -> Result<Statement, ParseError> {
+    pub(super) fn parse_let_statement(&mut self) -> Result<Statement, ParseError> {
+        
+        print!("parse_let_statement start: {}\n", self.current_token.literal);
+
         // current_token points to `let`.
         let let_token = self.current_token.clone();
         // Move to identifier.
@@ -35,10 +38,12 @@ impl Parser {
         // Point to the start of expression.
         let value = self.parse_expression(Precedence::Lowest)?;
 
-        // 
+        // stops at ; token.
         while !self.current_token_is(TokenType::Semicolon) {
             self.next_token();
         }
+
+        print!("parse_let_statement ends: {}\n", self.current_token.literal);
 
         return Ok(Statement::Let {
             token: let_token,
@@ -47,14 +52,14 @@ impl Parser {
         });
     }
 
-    fn parse_return_statement(&mut self) -> Result<Statement, ParseError> {
+    pub(super) fn parse_return_statement(&mut self) -> Result<Statement, ParseError> {
+        print!("parse_return_statement starts: {}\n", self.current_token.literal);
+
         // current_token points to `return` in return 5;
         let return_token = self.current_token.clone();
 
         // Move to token after `return`
         self.next_token();
-
-        println!("parse_return: move to next token {}", self.current_token.literal);
 
         // return value should be None if there is no expression after `return`
         // return;
@@ -66,15 +71,26 @@ impl Parser {
             || self.current_token_is(TokenType::RightBrace) {
                 None
             } else {
+                // For return 993 322;,
+                // only 993 is parsed.
+                // When it comes to 322,
+                // precedence(0) == peek_precedence(0),
+                // the parser has no idea what to do with it.
+                // The following while loop will simply drop it.
                 let expr = self.parse_expression(Precedence::Lowest)?;
                 Some(Rc::new(expr))
             };
-
+        
+        // Stops at ;
+        // TODO: This differs from the book's implementation
         while !self.current_token_is(TokenType::Semicolon) {
             self.next_token();
-
-            println!("parse_return: skip next token {}", self.current_token.literal)
         }
+
+        print!(
+            "parse_return_statement ends: {}\n",
+            self.current_token.literal
+        );
 
         return Ok(Statement::Return { 
             token: return_token, 
@@ -82,16 +98,21 @@ impl Parser {
         })
     }
 
-    fn parse_expression_statement(&mut self) -> Result<Statement, ParseError> {
+    pub(super) fn parse_expression_statement(&mut self) -> Result<Statement, ParseError> {
+        
+        print!("parse_expression_statement start: {}\n", self.current_token.literal);
+
         // current_token points to `x` in x + 10;
         let current_token = self.current_token.clone();
-        // parseing x + 10
+        // parsing x + 10
         let expr = self.parse_expression(Precedence::Lowest)?;
         
-        // Move after semicolon
+        // Move to ; if exists
         if self.peek_token_is(TokenType::Semicolon) {
             self.next_token();
         }
+
+        print!("parse_expression_statement end: {}\n", self.current_token.literal);
 
         return Ok(Statement::Expression {
             token: current_token,
