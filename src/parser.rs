@@ -45,7 +45,10 @@ impl Parser {
         self.peek_token = self.lexer.next_token();
     }
 
-    pub fn parse_program(&mut self) -> Result<ast::Program, Vec<ParseError>> { 
+    pub fn parse_program(&mut self) -> Result<ast::Program, Vec<ParseError>> {
+        
+        print!("parse_program starts: {}\n", self.current_token.literal);
+
         let mut statements: Vec<Statement> = Vec::new();
         let mut errors = Vec::new();
 
@@ -56,6 +59,8 @@ impl Parser {
             }
             self.next_token();
         }
+
+        print!("parse_program ends: {}\n", self.current_token.literal);
 
         if errors.is_empty() {
             Ok(ast::Program { statements })
