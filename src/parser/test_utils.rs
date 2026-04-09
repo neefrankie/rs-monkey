@@ -3,20 +3,9 @@ use std::rc::Rc;
 use crate::ast::{
     Expression,
     Identifier,
-    Program,
     Statement,
     BlockStatement,
 };
-
-use super::ParseError;
-
-// fn assert_expression(expr: &Expression, expected: &Expression) {
-//     match expr {
-//         Expression::Ident(ident) => {
-//             assert_identifier(ident, expected);
-//         }
-//     }
-// }
 
 pub fn assert_identifier_expr(expr: &Expression, expected: &str) {
 
@@ -316,6 +305,17 @@ pub fn assert_expr(expr: &Expression, expected: &Expression) {
                 *value
             );
         },
+        Expression::Prefix {
+            operator,
+            right,
+            ..
+        } => {
+            assert_prefix_expression(
+                expr, 
+                operator, 
+                &right
+            );
+        },
         Expression::Infix { 
             left, 
             operator, 
@@ -389,9 +389,6 @@ pub fn assert_expr(expr: &Expression, expected: &Expression) {
         } => {
             assert_hash_literal(expr, pairs);
         },
-        _ => {
-            panic!("type of exp not handled. got {}", expr);
-        },
     }
 }
 
@@ -409,52 +406,7 @@ fn assert_optional_expr(
     }
 }
 
-
-pub fn assert_block_stmt(
-    stmt: &BlockStatement,
-    expected: &BlockStatement
-) {
-    assert_eq!(stmt.statements.len(), expected.statements.len());
-
-    for (i, stmt) in stmt.statements.iter().enumerate() {
-        assert_stmt(stmt, &expected.statements[i]);
-    }
-}
-
-fn assert_optional_block_stmt(
-    stmt: &Option<Rc<BlockStatement>>,
-    expected: Option<&BlockStatement>
-) {
-    match (stmt, expected) {
-        (Some(blocks), Some(expected)) => assert_block_stmt(blocks, expected),
-        (None, None) => {}
-        _ => panic!("block statement not equal"),
-    }
-}
-
-pub fn assert_stmt(stmt: &Statement, expected: &Statement) {
-    match expected {
-        Statement::Let { 
-            name,
-            value,
-            ..
-        } => {
-            assert_let_stmt(&stmt, name, value);
-        },
-        Statement::Return {
-            return_value,
-            ..
-        } => {
-            assert_return_stmt(&stmt, return_value.as_deref());
-        },
-        Statement::Expression { 
-            expression,
-            ..
-        } => {
-            assert_expr_stmt(&stmt, expression);
-        }
-    }
-}
+// === Statements ===
 
 pub fn assert_let_stmt(
     stmt: &Statement, 
@@ -491,7 +443,10 @@ pub fn assert_return_stmt(
     );
 }
 
-pub fn assert_expr_stmt(stmt: &Statement, expected_value: &Expression) {
+pub fn assert_expr_stmt(
+    stmt: &Statement,
+    expected: &Expression
+) {
     let Statement::Expression {
         expression,
         ..
@@ -499,80 +454,51 @@ pub fn assert_expr_stmt(stmt: &Statement, expected_value: &Expression) {
         panic!("stmt is not a ExpressionStatement")
     };
 
-    assert_expr(expression, expected_value);
+    assert_expr(expression, expected);
 }
 
-
-pub fn unwrap_program(result: Result<Program, Vec<ParseError>>) -> Program {
-    match result {
-        Ok(program) => program,
-        Err(errors) => {
-            eprintln!("Parser has {} errors:", errors.len());
-            for error in &errors {
-                eprint!("Parser error: {:?}", error);
-            }
-            panic!("Parser has errors");
-        },
-    }
-}
-
-pub fn unwrap_expression_statement(stmt: &Statement) -> &Expression {
-    match stmt {
-        Statement::Expression {
-            expression,
-            .. 
-        } => expression,
-        _ => panic!("Statement is not an ExpressionStatement"),
-
-    }
-}
-
-
-pub fn assert_statements_len(program: &Program, expected: usize) {
-    assert_eq!(
-        program.statements.len(),
-        expected,
-        "program.statements does not contain {} statement. got={}", expected,
-        program.statements.len()
-    );
-}
-
-
-
-
-
-pub fn assert_let_statement(stmt: &Statement, expected_name: &str) {
-
-    assert_eq!(
-        stmt.token_literal(),
-        "let",
-        "stmt.token_literal() is not 'let'. got={}",
-        stmt.token_literal(),
-    );
-
-    match stmt {
+pub fn assert_stmt(stmt: &Statement, expected: &Statement) {
+    match expected {
         Statement::Let { 
-            name, 
+            name,
+            value,
             ..
         } => {
-            assert_eq!(
-                name.value,
-                expected_name,
-                "Statement.Let.name.value not '{}'. got '{}'",
-                expected_name,
-                name.value
-            );
-
-            assert_eq!(
-                name.token_literal(),
-                expected_name,
-                "Statement.Let.name.token_literal() not '{}'. got '{}'",
-                expected_name,
-                name.token_literal()
-            );
+            assert_let_stmt(&stmt, name, value);
+        },
+        Statement::Return {
+            return_value,
+            ..
+        } => {
+            assert_return_stmt(&stmt, return_value.as_deref());
+        },
+        Statement::Expression { 
+            expression,
+            ..
+        } => {
+            assert_expr_stmt(&stmt, expression);
         }
-
-        _ => panic!("stmt is not a LetStatement"),
     }
 }
 
+pub fn assert_block_stmt(
+    stmt: &BlockStatement,
+    expected: &BlockStatement
+) {
+    assert_eq!(stmt.statements.len(), expected.statements.len());
+
+    for (i, stmt) in stmt.statements.iter().enumerate() {
+        assert_stmt(stmt, &expected.statements[i]);
+    }
+}
+
+fn assert_optional_block_stmt(
+    stmt: &Option<Rc<BlockStatement>>,
+    expected: Option<&BlockStatement>
+) {
+    match (stmt, expected) {
+        (Some(blocks), Some(expected)) => assert_block_stmt(blocks, expected),
+        (None, None) => {}
+        _ => panic!("block statement not equal"),
+    }
+}

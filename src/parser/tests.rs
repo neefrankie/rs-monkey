@@ -1,8 +1,8 @@
 use std::vec;
 
-use crate::token::{Token, TokenType, token_from_str, new_int_token};
+use crate::token::{Token, TokenType, new_eof_token, new_int_token, token_from_str};
 use crate::ast::{
-    Expression, Statement, new_block_stmt, new_boolean_expr, new_expr_stmt, new_identifier, new_identifier_expr, new_infix_expr, new_integer_expr, new_string_expr
+    new_array_expr, new_block_stmt, new_boolean_expr, new_call_expr, new_expr_stmt, new_func_expr, new_hash_expr, new_identifier, new_identifier_expr, new_if_expr, new_index_expr, new_infix_expr, new_integer_expr, new_prefix_expr, new_string_expr
 };
 use crate::lexer::{Lexer};
 
@@ -503,8 +503,6 @@ fn test_parse_hash_key() {
     );
 }
 
-// === Integrated test ===
-
 #[test]
 fn test_index_precedence() {
     let tests = vec![
@@ -521,7 +519,7 @@ fn test_index_precedence() {
     for (input, expected) in tests {
         let l = Lexer::new(input.to_string());
         let mut p = Parser::new(l);
-        let program = unwrap_program(p.parse_program());
+        let program = p.parse_program().unwrap();
 
         let actual = program.to_string();
         assert_eq!(
@@ -534,6 +532,51 @@ fn test_index_precedence() {
     }
 }
 
+#[test]
+fn test_parse_let_stmt() {
+    let input = "let x = 5;";
+    let lex = Lexer::new(input.to_string());
+    let mut parser = Parser::new(lex);
+
+    let stmt = parser.parse_let_statement().unwrap();
+
+    assert_let_stmt(
+        &stmt, 
+        &new_identifier("x"), 
+        &new_integer_expr(5)
+    );
+}
+
+#[test]
+fn test_parse_return_stmt() {
+    let input = "return 5;";
+    let lex = Lexer::new(input.to_string());
+    let mut parser = Parser::new(lex);
+    let stmt = parser.parse_return_statement().unwrap();
+
+    assert_return_stmt(
+        &stmt,
+        Some(&new_integer_expr(5))
+    );
+}
+
+#[test]
+fn test_parse_expression_stmt() {
+    let input = "x + 10;";
+    let lex = Lexer::new(input.to_string());
+    let mut parser = Parser::new(lex);
+
+    let stmt = parser.parse_expression_statement().unwrap();
+
+    assert_expr_stmt(
+        &stmt, 
+        &new_infix_expr(
+            new_identifier_expr("x"),
+            "+",
+            new_integer_expr(10)
+        )
+    );
+}
 
 
 #[test]
@@ -555,6 +598,8 @@ fn test_parse_block_stmt() {
     );
 }
 
+// === Integrated test ===
+
 #[test]
 fn test_let_statements() {
     let input = "let x = 5;
@@ -563,26 +608,34 @@ let foobar = 838383;
 ";
     let lex = Lexer::new(input.to_string());
     let mut parser = Parser::new(lex);
-    let programm = unwrap_program(parser.parse_program());
+    let program = parser.parse_program().unwrap();
 
+    assert_eq!(program.statements.len(), 3);
+
+    assert_let_stmt(
+        &program.statements[0], 
+        &new_identifier("x"), 
+        &new_integer_expr(5),
+    );
+
+    assert_let_stmt(
+        &program.statements[1],
+        &new_identifier("y"),
+        &new_integer_expr(10)
+    );
+
+    assert_let_stmt(
+        &program.statements[2],
+        &new_identifier("foobar"),
+        &new_integer_expr(838383),
+    );
+    // parse_statement moves current_token to ;,
+    // but parse_program makes an extra move,
+    // which is EOF.
     assert_eq!(
-        programm.statements.len(), 
-        3,
-        "program.statements does not contain 3 statements. got={}",
-        programm.statements.len());
-
-    let tests = vec![
-        "x",
-        "y",
-        "foobar",
-    ];
-
-    for (i, &expected_name) in tests.iter().enumerate() {
-        // &* 先解引用得到 dyn Statement，再取引用得到 &dyn Statement
-        let stmt = &programm.statements[i];
-
-        assert_let_statement(stmt, expected_name);
-    }
+        parser.current_token,
+        new_eof_token()
+    );
 }
 
 #[test]
@@ -593,122 +646,167 @@ return 993 322;
 ";
     let lex = Lexer::new(input.to_string());
     let mut parser = Parser::new(lex);
-    let program = unwrap_program(parser.parse_program());
+    let program = parser.parse_program().unwrap();
     
     assert_eq!(
-        program.statements.len(),
-        3,
-        "program.statements does not contain 3 statements. got={}",
-        program.statements.len()
+        program.statements.len(), 
+        3
     );
 
-    for stmt in program.statements {
-        assert_eq!(
-            stmt.token_literal(),
-            "return",
-            "returnStmt.token_literal not 'return', got {}",
-            stmt.token_literal()
-        )
-    }
+    assert_return_stmt(
+        &program.statements[0], 
+        Some(&new_integer_expr(5)),
+    );
+
+    assert_return_stmt(
+        &program.statements[1],
+        Some(&new_integer_expr(10)),
+    );
+
+    assert_return_stmt(
+        &program.statements[2],
+        Some(&new_integer_expr(993)),
+    );
 }
 
 #[test]
 fn test_parsing_prefix_expressions() {
-    let five = Expression::IntegerLiteral {
-         token: Token {
-            token_type: TokenType::Int,
-            literal: "5".to_string(),
-         }, 
-         value: 5,
-    };
+    let input = "
+!5;
+-15;
+!true;
+!false;
+";
+    let lex = Lexer::new(input.to_string());
+    let mut parser = Parser::new(lex);
+    let program = parser.parse_program().unwrap();
 
-    let fifteen = new_integer_expr(15);
+    assert_eq!(program.statements.len(), 4);
 
-    let bool_true = new_boolean_expr(true);
+    assert_expr_stmt(
+        &program.statements[0],
+        &new_prefix_expr(
+            "!",
+            new_integer_expr(5)
+        ),
+    );
 
-    let bool_false = new_boolean_expr(false);
+    assert_expr_stmt(
+        &program.statements[1],
+        &new_prefix_expr(
+            "-",
+            new_integer_expr(15)
+        ),
+    );
 
-    let tests = vec![
-        ("!5;", "!", &five),
-        ("-15;", "-", &fifteen),
-        ("!true;", "!", &bool_true),
-        ("!false;", "!", &bool_false),
-    ];
+    assert_expr_stmt(
+        &program.statements[2],
+        &new_prefix_expr(
+            "!",
+            new_boolean_expr(true)
+        ),
+    );
 
-    for (
-        input, 
-        expected_operator, 
-        expected_right
-    ) in tests {
-        let lex = Lexer::new(input.to_string());
-        let mut parser = Parser::new(lex);
-        let program = unwrap_program(parser.parse_program());
-
-        assert_eq!(
-            program.statements.len(),
-            1,
-            "program has not enough statements. got={}",
-            program.statements.len()
-        );
-
-        let expr = program.statements[0]
-            .as_expression()
-            .expect("program.statements[0] is not ExpressionStatement");
-
-        assert_prefix_expression(
-            expr, 
-            expected_operator, 
-            expected_right
-        );
-    }
+    assert_expr_stmt(
+        &program.statements[3], &new_prefix_expr(
+            "!",
+            new_boolean_expr(false)
+        ),
+    );
 }
 
 
 #[test]
 fn test_parsing_infix_expressions() {
-    let five = new_integer_expr(5);
 
-    let bool_true = new_boolean_expr(true);
-
-    let bool_false = new_boolean_expr(false);
-
-    let tests = vec![
-        ("5 + 5;", &five, "+", &five),
-        ("5 - 5;", &five, "-", &five),
-        ("5 * 5;", &five, "*", &five),
-        ("5 / 5;", &five, "/", &five),
-        ("5 > 5;", &five, ">", &five),
-        ("5 < 5;", &five, "<", &five),
-        ("true == true", &bool_true, "==", &bool_true),
-        ("true != false", &bool_true, "!=", &bool_false),
-        ("false == false", &bool_false, "==", &bool_false),
+    let tests = [
+        (
+            "5 + 5;", 
+            new_infix_expr(
+                new_integer_expr(5),
+                "+",
+                new_integer_expr(5),
+            ),
+        ),
+        (
+            "5 - 5;",
+            new_infix_expr(
+                new_integer_expr(5),
+                "-",
+                new_integer_expr(5),
+            ),
+        ),
+        (
+            "5 * 5;", 
+            new_infix_expr(
+                new_integer_expr(5),
+                "*",
+                new_integer_expr(5)
+            ),
+        ),
+        (
+            "5 / 5;", 
+            new_infix_expr(
+                new_integer_expr(5),
+                "/",
+                new_integer_expr(5),
+            ),
+        ),
+        (
+            "5 > 5;",
+            new_infix_expr(
+                new_integer_expr(5),
+                ">",
+                new_integer_expr(5),
+            ),
+        ),
+        (
+            "5 < 5;",
+            new_infix_expr(
+                new_integer_expr(5), 
+                "<",
+                new_integer_expr(5),
+            ),
+        ),
+        (
+            "true == true", 
+            new_infix_expr(
+                new_boolean_expr(true),
+                "==",
+                new_boolean_expr(true),
+            ),
+        ),
+        (
+            "true != false", 
+            new_infix_expr(
+                new_boolean_expr(true),
+                "!=",
+                new_boolean_expr(false),
+            )
+        ),
+        (
+            "false == false", 
+            new_infix_expr(
+                new_boolean_expr(false),
+                "==",
+                new_boolean_expr(false)
+            )
+        ),
     ];
 
     for (
         input, 
-        left_value, 
-        expected_operator, 
-        right_value
+        expected
     ) in tests {
         let lex = Lexer::new(input.to_string());
         let mut parser = Parser::new(lex);
-        let program = unwrap_program(parser.parse_program());
-        assert_eq!(
-            program.statements.len(),
-            1,
-            "program has not enough statements. got={}",
-            program.statements.len()
-        );
+        let program = parser.parse_program().unwrap();
 
-        let expr = program.statements[0]
-            .as_expression()
-            .expect("statement is not an ExpressionStatement");
+        assert_eq!(program.statements.len(), 1);
 
-        assert_infix_expression(
-            expr, 
-            left_value, 
-            expected_operator, 
-            right_value
+        assert_expr_stmt(
+            &program.statements[0], 
+            &expected
         );
     }
 }
@@ -716,38 +814,109 @@ fn test_parsing_infix_expressions() {
 
 #[test]
 fn test_operator_precedence_parsing() {
-    let tests = vec![
-        ("-a * b", "((-a) * b)"),
-        ("!-a", "(!(-a))"),
-        ("a + b + c", "((a + b) + c)"),
-        ("a + b - c", "((a + b) - c)"),
-        ("a * b * c", "((a * b) * c)"),
-        ("a * b / c", "((a * b) / c)"),
-        ("a + b / c", "(a + (b / c))"),
-        ("a + b * c + d / e - f", "(((a + (b * c)) + (d / e)) - f)"),
-        ("3 + 4; -5 * 5", "(3 + 4)((-5) * 5)"),
-        ("5 > 4 == 3 < 4", "((5 > 4) == (3 < 4))"),
-        ("5 < 4 != 3 > 4", "((5 < 4) != (3 > 4))"),
-        ("3 + 4 * 5 == 3 * 1 + 4 * 5", "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))"),
-        ("true", "true"),
-        ("false", "false"),
-        ("3 > 5 == false", "((3 > 5) == false)"),
-        ("3 < 5 == true", "((3 < 5) == true)"),
-        ("1 + (2 + 3) + 4", "((1 + (2 + 3)) + 4)"),
-        ("(5 + 5) * 2", "((5 + 5) * 2)"),
-        ("2 / (5 + 5)", "(2 / (5 + 5))"),
-        ("-(5 + 5)", "(-(5 + 5))"),
-        ("!(true == true)", "(!(true == true))"),
-        ("a + add(b * c) + d", "((a + add((b * c))) + d)"),
-        ("add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))", "add(a, b, 1, (2 * 3), (4 + 5), add(6, (7 * 8)))"),
-        ("add(a + b + c * d / f + g)", "add((((a + b) + ((c * d) / f)) + g))")
-
+    let tests = [
+        (
+            "-a * b",
+            "((-a) * b)"
+        ),
+        (
+            "!-a",
+            "(!(-a))"
+        ),
+        (
+            "a + b + c",
+            "((a + b) + c)"
+        ),
+        (
+            "a + b - c",
+            "((a + b) - c)"
+        ),
+        (
+            "a * b * c",
+            "((a * b) * c)"
+        ),
+        (
+            "a * b / c",
+            "((a * b) / c)"
+        ),
+        (
+            "a + b / c",
+            "(a + (b / c))"
+        ),
+        (
+            "a + b * c + d / e - f", 
+            "(((a + (b * c)) + (d / e)) - f)"
+        ),
+        (
+            "3 + 4; -5 * 5", 
+            "(3 + 4)((-5) * 5)"
+        ),
+        (
+            "5 > 4 == 3 < 4", 
+            "((5 > 4) == (3 < 4))"
+        ),
+        (
+            "5 < 4 != 3 > 4", 
+            "((5 < 4) != (3 > 4))"
+        ),
+        (
+            "3 + 4 * 5 == 3 * 1 + 4 * 5", 
+            "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))"
+        ),
+        (
+            "true", 
+            "true"
+        ),
+        (
+            "false", 
+            "false"
+        ),
+        (
+            "3 > 5 == false", 
+            "((3 > 5) == false)"
+        ),
+        (
+            "3 < 5 == true", 
+            "((3 < 5) == true)"
+        ),
+        (
+            "1 + (2 + 3) + 4", 
+            "((1 + (2 + 3)) + 4)"
+        ),
+        (
+            "(5 + 5) * 2", 
+            "((5 + 5) * 2)"
+        ),
+        (
+            "2 / (5 + 5)", 
+            "(2 / (5 + 5))"
+        ),
+        (
+            "-(5 + 5)", 
+            "(-(5 + 5))"
+        ),
+        (
+            "!(true == true)", 
+            "(!(true == true))"
+        ),
+        (
+            "a + add(b * c) + d", 
+            "((a + add((b * c))) + d)"
+        ),
+        (
+            "add(a, b, 1, 2 * 3, 4 + 5, 
+            add(6, 7 * 8))", "add(a, b, 1, (2 * 3), (4 + 5), add(6, (7 * 8)))"
+        ),
+        (
+            "add(a + b + c * d / f + g)", 
+            "add((((a + b) + ((c * d) / f)) + g))"
+        )
     ];
 
     for (input, expected) in tests {
         let l = Lexer::new(input.to_string());
         let mut p = Parser::new(l);
-        let program = unwrap_program(p.parse_program());
+        let program = p.parse_program().unwrap();
 
         let actual = program.to_string();
         assert_eq!(
@@ -765,136 +934,87 @@ fn test_if_expression() {
     let input = "if (x < y) { x }";
     let lex = Lexer::new(input.to_string());
     let mut parser = Parser::new(lex);
-    let program = unwrap_program(parser.parse_program());
+    let program = parser.parse_program().unwrap();
 
-    assert_statements_len(&program, 1);
+    assert_eq!(program.statements.len(), 1);
 
-    // program.statements[0].expression
-    let expr = unwrap_expression_statement(&program.statements[0]);
-
-    let Expression::If {
-        condition, 
-        consequence, 
-        alternative ,
-        ..
-    } = expr else {
-        panic!("expr is not an IfExpression")
-    };
-
-    assert_infix_expression(
-        condition,
-        &new_identifier_expr("x"), 
-        "<", 
-        &new_identifier_expr("y"),
+    assert_expr_stmt(
+        &program.statements[0], 
+        &new_if_expr(
+                new_infix_expr(
+                new_identifier_expr("x"),
+                "<",
+                new_identifier_expr("y")
+            ), 
+            new_block_stmt(vec![
+                new_expr_stmt("x", new_identifier_expr("x"))
+            ]),
+            None,
+        )
     );
-
-    assert_eq!(
-        consequence.statements.len(),
-        1,
-        "consequence.statements does not contain 1 statement. got={}",
-        consequence.statements.len()
-    );
-
-    let ident = consequence.statements[0]
-        .as_expression()
-        .expect("consequence.statements[0] is not ExpressionStatement");
-
-    assert_identifier_expr(ident, "x");
-
-    assert!(alternative.is_none());
 }
 
 #[test]
 fn test_function_literal_parsing() {
-    let input = "fn(x, y) { x + y; }";
-
+    let input = "let add = fn(x, y) { x + y; };";
     let lex = Lexer::new(input.to_string());
     let mut parser = Parser::new(lex);
-    let program = unwrap_program(parser.parse_program());
+    let program = parser.parse_program().unwrap();
 
-    assert_statements_len(&program, 1);
-
-    let expr = unwrap_expression_statement(&program.statements[0]);
-
-    match expr {
-        Expression::FunctionLiteral {
-            parameters,
-            body,
-            ..
-        } => {
-            assert_eq!(
-                parameters.len(),
-                2,
-                "function literal parameters wrong. want 2, got={}",
-                parameters.len()
-            );
-
-            assert_identifier_value(&parameters[0], "x");
-            assert_identifier_value(&parameters[1], "y");
-
-            assert_eq!(
-                body.statements.len(),
-                1,
-                "function.Body.statements does not contain 1 statement. got={}",
-                body.statements.len(),
-            );
-
-            match &body.statements[0] {
-                Statement::Expression { 
-                    expression,
-                    ..
-                } => {
-                    assert_infix_expression(
-                        &*expression, 
-                        &new_identifier_expr("x"), 
+    assert_let_stmt(
+        &program.statements[0], 
+        &new_identifier("add"), 
+        &new_func_expr(
+            vec!["x", "y"], 
+            new_block_stmt(vec![
+                new_expr_stmt(
+                    "x",
+                    new_infix_expr(
+                        new_identifier_expr("x"), 
                         "+", 
-                        &new_identifier_expr("y"),
-                    );
-                }
-
-                _ => panic!("function body stmt is not ExpressionStatement. got={}", body.statements[0]),
-            }
-        }
-
-        _ => panic!("stmt.Expression is not a FunctionLiteral. got={}", expr),
-    }
+                        new_identifier_expr("y")
+                    )
+                ),
+            ])
+        )
+    );
 }
 
 #[test]
 fn test_function_parameter_parsing() {
-    let tests = vec![
-        ("fn() {};", vec![]),
-        ("fn(x) {};", vec!["x"]),
-        ("fn(x, y, z) {};", vec!["x", "y", "z"]),
+    let tests =[
+        (
+            "fn() {};", 
+            new_func_expr(
+                vec![],
+                new_block_stmt(vec![])
+            )
+        ),
+        (
+            "fn(x) {};", 
+            new_func_expr(
+                vec!["x"],
+                new_block_stmt(vec![]),
+            )
+        ),
+        (
+            "fn(x, y, z) {};", 
+            new_func_expr(
+                vec!["x", "y", "z"],
+                new_block_stmt(vec![])
+            ),
+        ),
     ];
 
     for (input, expected) in tests {
         let lex = Lexer::new(input.to_string());
         let mut parser = Parser::new(lex);
-        let program = unwrap_program(parser.parse_program());
+        let program = parser.parse_program().unwrap();
 
-        let expr = unwrap_expression_statement(&program.statements[0]);
-
-        match expr {
-            Expression::FunctionLiteral {
-                parameters,
-                ..
-            } => {
-                assert_eq!(
-                    parameters.len(),
-                    expected.len(),
-                    "length parameters wrong. want {}, got={}",
-                    expected.len(),
-                    parameters.len()
-                );
-
-                for (i, ident) in parameters.iter().enumerate() {
-                    assert_identifier_value(ident, expected[i]);
-                }
-            }
-
-            _ => panic!("stmt.Expression is not a FunctionLiteral. got={}", expr),
-        }
+        assert_expr_stmt(
+            &program.statements[0],
+            &expected
+        );
     }
 }
 
@@ -903,77 +1023,167 @@ fn test_call_expression_parsing() {
     let input = "add(1, 2 * 3, 4 + 5);";
     let lex = Lexer::new(input.to_string());
     let mut parser = Parser::new(lex);
-    let program = unwrap_program(parser.parse_program());
+    let program = parser.parse_program().unwrap();
 
-    assert_statements_len(&program, 1);
+    assert_eq!(program.statements.len(), 1);
 
-    let expr = unwrap_expression_statement(&program.statements[0]);
-
-    match expr {
-        Expression::Call {
-            function,
-            arguments,
-            ..
-        } => {
-            assert_identifier_expr(function, "add");
-
-            assert_eq!(
-                arguments.len(),
-                3,
-                "wrong length of arguments. got={}",
-                arguments.len()
-            );
-
-            assert_integer_literal(&arguments[0], 1);
-            assert_infix_expression(
-                &arguments[1], 
-                &new_integer_expr(2),
-                "*",
-                &new_integer_expr(3)
-            );
-            assert_infix_expression(
-                &arguments[2], 
-                &new_integer_expr(4),
-                "+",
-                &new_integer_expr(5)
-            );
-        }
-
-        _ => panic!("stmt.Expression is not a CallExpression. got={}", expr),
-    }
+    assert_expr_stmt(
+        &program.statements[0],
+        &new_call_expr(
+            new_identifier_expr("add"),
+            vec![
+                new_integer_expr(1),
+                new_infix_expr(
+                    new_integer_expr(2),
+                    "*",
+                    new_integer_expr(3)
+                ),
+                new_infix_expr(
+                    new_integer_expr(4),
+                    "+",
+                    new_integer_expr(5)
+                )
+            ],
+        ),
+    );
 }
 
+#[test]
+fn test_string_literal_expression() {
+    let input = r#"let x = "hello world""#;
+    let lex = Lexer::new(input.to_string());
+    let mut parser = Parser::new(lex);
+    let program = parser.parse_program().unwrap();
+
+    assert_eq!(program.statements.len(), 1);
+
+    assert_let_stmt(
+        &program.statements[0], 
+        &new_identifier("x"), 
+        &new_string_expr("hello world")
+    );
+}
 
 #[test]
 fn test_parsing_array_literals() {
-    let input = "[1, 2 * 2, 3 + 3]";
+    let input = "let x = [1, 2 * 2, 3 + 3];";
 
     let lex = Lexer::new(input.to_string());
     let mut parser = Parser::new(lex);
-    let program = unwrap_program(parser.parse_program());
-    let expr = unwrap_expression_statement(&program.statements[0]);
+    let program = parser.parse_program().unwrap();
     
-    match expr {
-        Expression::ArrayLiteral {
-            elements,
-            ..
-        } => {
-            assert_eq!(elements.len(), 3);
-            assert_integer_literal(&elements[0], 1);
-            assert_infix_expression(
-                &elements[1],
-                &new_integer_expr(2),
-                "*",
-                &new_integer_expr(2)
-            );
-            assert_infix_expression(
-                &elements[2],
-                &new_integer_expr(3),
-                "+",
-                &new_integer_expr(3)
-            );
-        }
+    assert_eq!(program.statements.len(), 1);
 
-        _ => panic!("expression is not ArrayLiteral. got={}", expr),
+    assert_let_stmt(
+        &program.statements[0],
+        &new_identifier("x"),
+        &new_array_expr(vec![
+            new_integer_expr(1),
+            new_infix_expr(
+                new_integer_expr(2),
+                "*",
+                new_integer_expr(2)
+            ),
+            new_infix_expr(
+                new_integer_expr(3),
+                "+",
+                new_integer_expr(4)
+            )
+        ]),
+    );
+}
+
+#[test]
+fn test_parsing_index_expressions() {
+    let input = "let x = myArray[1 + 1]";
+    let lex = Lexer::new(input.to_string());
+    let mut parser = Parser::new(lex);
+    let program = parser.parse_program().unwrap();
+
+    assert_eq!(
+        program.statements.len(),
+        1
+    );
+
+    assert_let_stmt(
+        &program.statements[0],
+        &new_identifier("x"),
+        &new_index_expr(
+            new_identifier_expr("myArray"),
+            new_infix_expr(
+                new_integer_expr(1),
+                "+",
+                new_integer_expr(1)
+            ),
+        ),
+    );
+}
+
+#[test]
+fn test_parsing_hash_literals() {
+    let tests = [
+        (
+            r#"{"one": 1, "two}: 2, "three": 3}"#,
+            new_hash_expr(vec![
+                (
+                    new_string_expr("one"),
+                    new_integer_expr(1)
+                ),
+                (
+                    new_string_expr("two"),
+                    new_integer_expr(2)
+                ),
+                (
+                    new_string_expr("three"),
+                    new_integer_expr(3)
+                )
+            ]),
+        ),
+        (
+            "{}",
+            new_hash_expr(vec![]),
+        ),
+        (
+            r#"{"one": 0 + 1, "two}: 10 - 8, "three": 15 / 5}"#,
+            new_hash_expr(vec![
+                (
+                    new_string_expr("one"),
+                    new_infix_expr(
+                        new_integer_expr(0),
+                        "+",
+                        new_integer_expr(1)
+                    )
+                ),
+                (
+                    new_string_expr("two"),
+                    new_infix_expr(
+                        new_integer_expr(10),
+                        "-",
+                        new_integer_expr(8)
+                    )
+                ),
+                (
+                    new_string_expr("three"),
+                    new_infix_expr(
+                        new_integer_expr(5),
+                        "*",
+                        new_integer_expr(5)
+                    ),
+                ),
+            ]),
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let lex = Lexer::new(input.to_string());
+        let mut parser = Parser::new(lex);
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(program.statements.len(), 1);
+
+        assert_expr_stmt(
+            &program.statements[0],
+            &expected
+        );
     }
 }
