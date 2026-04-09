@@ -1,6 +1,6 @@
 use std::fmt;
 
-use super::{Statement, Expression, BlockStatement};
+use super::{Statement, BlockStatement};
 
 impl Statement {
     pub fn token_literal(&self) -> String {
@@ -44,18 +44,6 @@ impl fmt::Display for Statement {
                 token: _,
                 expression,
             } => write!(f, "{}", expression),
-        }
-    }
-}
-
-impl Statement {
-    pub fn as_expression(&self) -> Option<&Expression> {
-        match self {
-            Statement::Expression {
-                token: _,
-                expression,
-            } => Some(expression),
-            _ => None,
         }
     }
 }
