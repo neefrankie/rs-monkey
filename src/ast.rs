@@ -53,6 +53,10 @@ pub enum Expression {
         token: token::Token,
         value: bool,
     },
+    StringLiteral {
+        token: token::Token,
+        value: String,
+    },
     Prefix {
         // -5;
         // !foobar;
@@ -84,18 +88,15 @@ pub enum Expression {
         //     return x + y;
         // }
         token: token::Token, // fn
-        parameters: Vec<Identifier>, // [x, y]
+        parameters: Vec<Identifier>, // (x, y)
         body: Rc<BlockStatement>, // { return x + y; }
     },
     Call {
         // add(x, y)
-        token: token::Token, // add
-        function: Rc<Expression>, // add
+        // fn(x, y) { x + y; }(2, 3)
+        token: token::Token, // （
+        function: Rc<Expression>, // Identifier or function literal
         arguments: Vec<Expression>, // [x, y]
-    },
-    StringLiteral {
-        token: token::Token,
-        value: String,
     },
     ArrayLiteral {
         token: token::Token, // [
