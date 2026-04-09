@@ -39,7 +39,11 @@ impl Parser {
         let value = self.parse_expression(Precedence::Lowest)?;
 
         // stops at ; token.
-        while !self.current_token_is(TokenType::Semicolon) {
+        // while !self.current_token_is(TokenType::Semicolon) {
+        //     self.next_token();
+        // }
+        // Move to optional semicolon.
+        if self.peek_token_is(TokenType::Semicolon) {
             self.next_token();
         }
 
@@ -82,8 +86,11 @@ impl Parser {
             };
         
         // Stops at ;
-        // TODO: This differs from the book's implementation
-        while !self.current_token_is(TokenType::Semicolon) {
+        // while !self.current_token_is(TokenType::Semicolon) {
+        //     self.next_token();
+        // }
+        // Move to optional semicolon.
+        if self.peek_token_is(TokenType::Semicolon) {
             self.next_token();
         }
 
